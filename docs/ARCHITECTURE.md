@@ -109,7 +109,7 @@ colours are reserved for state and are always paired with a text label.
 
 ## Rendering and Cloudflare
 
-`cacheComponents` and `partialPrefetching` are off. The Next docs state that Cache Components requires
+See [DEPLOYMENT.md](DEPLOYMENT.md) for infrastructure. `cacheComponents` and `partialPrefetching` are off. The Next docs state that Cache Components requires
 the Node.js runtime and that other server runtimes are not guaranteed to work, and this app targets
 Cloudflare Workers. Next's documentation says both features become always-on in the next major
 version, so re-check Cloudflare support before that upgrade.
@@ -117,8 +117,7 @@ version, so re-check Cloudflare support before that upgrade.
 The dashboard layout calls `await connection()`, so its pages render per request. Live data will need
 a session anyway, and this is the documented replacement for `dynamic = "force-dynamic"`.
 
-Cloudflare configuration itself is out of scope for Step 1. The app avoids anything that would block
-it: no `next/image` optimizer, no Node-only APIs, and no filesystem access at runtime.
+The app avoids anything Workers cannot run: no `next/image` optimizer, no filesystem access at runtime.
 
 ## HTTP status codes
 
@@ -137,7 +136,9 @@ codes. `/settings` is one such redirect.
 | `getReferenceDate()` | The real clock | Date presets |
 | Toasts on placeholder actions | Real actions | The surrounding UI |
 
-Then delete `src/mocks/`.
+This table is out of date in one respect: lead data cannot stay in a client store seeded with every
+lead, so `useLeads()` is replaced by server-side paging and Server Actions in Phase 2. `src/mocks/` stays,
+because the P2 and P3 previews still use it.
 
 ## Testing
 

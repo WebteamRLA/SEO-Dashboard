@@ -47,3 +47,4 @@ next-env.d.ts
 
 # prisma client is generated on install
 /src/generated/
+!.dev.vars.example

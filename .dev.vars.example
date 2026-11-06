@@ -1,0 +1,7 @@
+# Copy to .dev.vars, which is git-ignored. Never commit real values.
+# Do not use .env files for secrets: the OpenNext adapter copies them into the Worker.
+
+# Runtime connection, used by `npm run dev`. On Cloudflare the Hyperdrive binding is used.
+DATABASE_URL=""
+# Direct connection (no "-pooler" in the host). Used by Prisma migrations.
+DIRECT_DATABASE_URL=""
