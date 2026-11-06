@@ -1,6 +1,9 @@
 name: Deploy
 
-# Manual until production is signed off. Migrations run before the new code.
+# Manual until production is signed off.
+#
+# Order matters: everything that can fail without touching production runs
+# first, so a bad build never leaves production migrated with old code.
 on:
   workflow_dispatch:
 
@@ -13,22 +16,34 @@ concurrency:
 
 jobs:
   deploy:
+    # A second guard. The real one is the branch rule on the production
+    # environment, as this line can be edited on a branch. See docs/DEPLOYMENT.md.
+    if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     environment: production
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
         with:
           node-version: 24
           cache: npm
       - run: npm ci
       - run: npm run check
+      - name: Build for Cloudflare, and check for secrets and size
+        run: npm run build:cloudflare && npm run check:size
+      - name: Hide database details from the public logs
+        run: node scripts/mask-database-url.mjs
+        env:
+          DIRECT_DATABASE_URL: ${{ secrets.DIRECT_DATABASE_URL }}
       - name: Apply database migrations
         run: npx prisma migrate deploy
         env:
           DIRECT_DATABASE_URL: ${{ secrets.DIRECT_DATABASE_URL }}
-      - name: Build and deploy to Cloudflare
-        run: npm run deploy:cloudflare
+      - name: Deploy to Cloudflare
+        run: npx opennextjs-cloudflare deploy
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          # Not a secret and never connected to. The adapter reads local bindings
+          # before deploying, and wrangler refuses a Hyperdrive binding without it.
+          CLOUDFLARE_HYPERDRIVE_LOCAL_CONNECTION_STRING_HYPERDRIVE: postgresql://unused:unused@localhost:5432/unused

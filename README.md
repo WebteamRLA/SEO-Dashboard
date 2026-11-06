@@ -33,7 +33,7 @@ Open <http://localhost:3000>.
 | `npm run test` | Run unit tests |
 | `npm run check` | Run all of the above except dev and start |
 | `npm run build:cloudflare` | Build the Worker and fail if a secret is in it |
-| `npm run preview:cloudflare` | Run the Worker locally on Cloudflare's runtime |
+| `npm run preview:cloudflare` | Run the Worker locally on Cloudflare's runtime (see [Deployment](docs/DEPLOYMENT.md)) |
 | `npm run check:size` | Fail if the Worker exceeds its size budget |
 | `npm run db:migrate` | Create and apply a migration in development |
 | `npm run db:deploy` | Apply pending migrations |

@@ -33,10 +33,23 @@ would keep working with the password inside it. `npm run build:cloudflare` runs
    ```
 
 2. Put the returned id in `wrangler.jsonc`.
-3. Add the GitHub Actions secrets above, in an environment named `production`.
-4. Run the **Deploy** workflow. It is manual until production is signed off.
-5. Add the approved subdomain as a custom domain on the Worker.
-6. Check `/api/health` returns `{"status":"ok"}`.
+3. Create a GitHub environment named `production`, and add the Actions secrets above to it.
+4. **Protect that environment:** restrict deployment branches to `main` and add a required reviewer.
+   Without this, anyone with write access could run a modified workflow from a branch and reach the
+   production secrets.
+5. Run the **Deploy** workflow. It is manual until production is signed off.
+6. Add the approved subdomain as a custom domain on the Worker.
+7. Check `/api/health` returns `{"status":"ok"}`.
+
+## What a deploy does
+
+The workflow runs everything that can fail safely first, so a failed build never leaves production
+migrated with old code:
+
+1. Run the checks, build the Worker, and check it for secrets and size.
+2. Hide the database host and name from the logs, as Prisma prints them.
+3. Apply migrations.
+4. Deploy the Worker.
 
 ## Database migrations
 
@@ -52,6 +65,22 @@ would keep working with the password inside it. `npm run build:cloudflare` runs
 - `next.config.ts` excludes Prisma's unused engines. Without that the Worker is 58 MiB against a
   64 MiB limit. `npm run check:size` enforces a 40 MiB budget in CI.
 
+## Running the Worker locally
+
+`npm run preview:cloudflare` needs one variable in the shell, as wrangler refuses a Hyperdrive binding
+without it. It is not read from `.dev.vars`, and putting it in `.env` fails the secrets check:
+
+```bash
+export CLOUDFLARE_HYPERDRIVE_LOCAL_CONNECTION_STRING_HYPERDRIVE="<direct url>"
+npm run preview:cloudflare
+```
+
+## Testing database code
+
+The Prisma client is generated for Cloudflare's runtime and cannot load under Vitest, and
+`src/server/db/client.ts` is server-only. Mock `@/server/db/client` in unit tests, as
+`src/app/api/health/route.test.ts` does. Tests of real queries need the Workers test pool.
+
 ## Rollback
 
 | Problem | Action |
@@ -66,5 +95,5 @@ Rolling back code does not roll back the database, which is why migrations must 
 
 These need Cloudflare access and have only been tested locally on Cloudflare's runtime against Neon:
 
-- A real deployment, and the path through real Hyperdrive.
-- The Deploy workflow itself.
+- A real deployment, and the path through real Hyperdrive, including its query caching.
+- The Deploy workflow itself, and the GitHub environment protection rules.
