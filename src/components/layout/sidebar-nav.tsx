@@ -106,7 +106,7 @@ export function SidebarBrand() {
         RL
       </span>
       <span className="min-w-0 leading-tight">
-        <span className="block truncate text-sm font-semibold">Central Organic</span>
+        <span className="block truncate text-sm font-semibold">SEO Dashboard</span>
         <span className="block truncate text-xs text-muted-foreground">RightLeft Agency</span>
       </span>
     </div>

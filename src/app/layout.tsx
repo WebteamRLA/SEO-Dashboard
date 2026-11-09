@@ -8,7 +8,7 @@ const geistSans = Geist({ variable: "--font-geist-sans", subsets: ["latin"] });
 const geistMono = Geist_Mono({ variable: "--font-geist-mono", subsets: ["latin"] });
 
 export const metadata: Metadata = {
-  title: { default: "Central Organic Dashboard", template: "%s | RLA Organic Dashboard" },
+  title: { default: "SEO Dashboard", template: "%s | SEO Dashboard" },
   description: "SEO work, leads, revenue, and site health for RightLeft Agency in one place.",
   // A private business tool. It should never appear in search results.
   robots: { index: false, follow: false },
