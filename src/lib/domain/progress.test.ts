@@ -45,14 +45,20 @@ describe("countTasks", () => {
 });
 
 describe("countTasksByCategory", () => {
-  it("includes every category, even those with no tasks", () => {
-    const rows = countTasksByCategory([task("a", "completed"), task("b", "todo")]);
-    expect(rows).toHaveLength(6);
-    expect(rows.find((row) => row.category === "Technical SEO")).toMatchObject({
-      total: 2,
-      completed: 1,
-    });
-    expect(rows.find((row) => row.category === "Blog Writing")?.total).toBe(0);
+  it("counts only the categories present, ranked by total then name", () => {
+    const rows = countTasksByCategory([
+      task("a", "completed", { category: "Technical SEO" }),
+      task("b", "todo", { category: "Technical SEO" }),
+      task("c", "completed", { category: "Blog Writing" }),
+    ]);
+    expect(rows).toEqual([
+      { category: "Technical SEO", total: 2, completed: 1 },
+      { category: "Blog Writing", total: 1, completed: 1 },
+    ]);
+  });
+
+  it("returns nothing for no tasks", () => {
+    expect(countTasksByCategory([])).toEqual([]);
   });
 });
 

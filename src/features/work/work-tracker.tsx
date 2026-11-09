@@ -8,12 +8,11 @@ import { FilterBar, FilterSelect, ALL } from "@/components/data/filter-select";
 import { MetricCard, MetricGrid } from "@/components/data/metric-card";
 import { SearchInput } from "@/components/data/search-input";
 import { StatusBadge } from "@/components/data/status-badge";
-import { TASK_CATEGORIES, TASK_STATUSES, type CategoryCount, type TaskCounts } from "@/lib/types";
+import { TASK_STATUSES, type CategoryCount, type TaskCounts } from "@/lib/types";
 import { formatDate, formatNumber } from "@/lib/format";
 import { filterTasks, STATUS_META, type TaskRow } from "./filter-tasks";
 
 const STATUS_OPTIONS = TASK_STATUSES.map((value) => ({ value, label: STATUS_META[value].label }));
-const CATEGORY_OPTIONS = TASK_CATEGORIES.map((value) => ({ value, label: value }));
 
 const COLUMNS: Column<TaskRow>[] = [
   {
@@ -56,6 +55,12 @@ export function WorkTracker({
   const [status, setStatus] = useState(ALL);
   const [category, setCategory] = useState(ALL);
 
+  // Categories come from the data, so the filter matches the real task lists.
+  const categoryOptions = useMemo(() => {
+    const names = [...new Set(rows.map((row) => row.category))].sort((a, b) => a.localeCompare(b));
+    return names.map((value) => ({ value, label: value }));
+  }, [rows]);
+
   const filtered = useMemo(
     () => filterTasks(rows, { query, status, category }),
     [rows, query, status, category],
@@ -85,7 +90,7 @@ export function WorkTracker({
       <FilterBar>
         <SearchInput value={query} onChange={setQuery} placeholder="Search tasks, projects, people" />
         <FilterSelect label="Filter by status" allLabel="All statuses" value={status} options={STATUS_OPTIONS} onChange={setStatus} />
-        <FilterSelect label="Filter by category" allLabel="All categories" value={category} options={CATEGORY_OPTIONS} onChange={setCategory} />
+        <FilterSelect label="Filter by category" allLabel="All categories" value={category} options={categoryOptions} onChange={setCategory} />
       </FilterBar>
 
       <DataTable

@@ -7,7 +7,6 @@ import type {
   Task,
   TaskCounts,
 } from "@/lib/types";
-import { TASK_CATEGORIES } from "@/lib/types";
 
 export function toProgress(completed: number, total: number): Progress {
   return {
@@ -27,15 +26,22 @@ export function countTasks(tasks: readonly Task[]): TaskCounts {
   return counts;
 }
 
+/**
+ * Counts by category, derived from the tasks themselves rather than a fixed
+ * list, so it works for any category set, including Teamwork's task lists.
+ * Ordered by total descending, then name, so the ranking reads cleanly.
+ */
 export function countTasksByCategory(tasks: readonly Task[]): CategoryCount[] {
-  return TASK_CATEGORIES.map((category) => {
-    const inCategory = tasks.filter((task) => task.category === category);
-    return {
-      category,
-      total: inCategory.length,
-      completed: inCategory.filter((task) => task.status === "completed").length,
-    };
-  });
+  const byCategory = new Map<string, CategoryCount>();
+  for (const task of tasks) {
+    const row = byCategory.get(task.category) ?? { category: task.category, total: 0, completed: 0 };
+    row.total += 1;
+    if (task.status === "completed") row.completed += 1;
+    byCategory.set(task.category, row);
+  }
+  return [...byCategory.values()].sort(
+    (a, b) => b.total - a.total || a.category.localeCompare(b.category),
+  );
 }
 
 /**

@@ -20,7 +20,7 @@ import {
 } from "@/lib/domain/leads";
 import { toMonthKey } from "@/lib/month";
 import { formatCurrency, formatDate, formatMonthShort, formatNumber } from "@/lib/format";
-import type { MonthKey, Progress, TaskCategory, TaskCounts } from "@/lib/types";
+import type { MonthKey, Progress, TaskCounts } from "@/lib/types";
 import { completeMonths } from "@/lib/month";
 import { buildMonthSummary } from "./summary";
 
@@ -36,7 +36,7 @@ export interface OverviewProps {
   recentCompleted: {
     id: string;
     name: string;
-    category: TaskCategory;
+    category: string;
     assignee: string;
     completedDate: string | null;
   }[];

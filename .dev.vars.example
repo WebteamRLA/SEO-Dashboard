@@ -5,3 +5,9 @@
 DATABASE_URL=""
 # Direct connection (no "-pooler" in the host). Used by Prisma migrations.
 DIRECT_DATABASE_URL=""
+
+# Teamwork (Phase 3). Basic auth needs the site URL and an API key together.
+# Site URL: your Teamwork address, e.g. https://rightleft.teamwork.com (no trailing slash).
+TEAMWORK_BASE_URL=""
+# API key: Teamwork > profile > Edit My Details > API & Mobile > API Token.
+TEAMWORK_API_KEY=""

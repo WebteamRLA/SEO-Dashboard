@@ -13,11 +13,15 @@ export const TASK_CATEGORIES = [
 ] as const;
 export type TaskCategory = (typeof TASK_CATEGORIES)[number];
 
-/** One unit of SEO work. Sourced from Teamwork in a later step. */
+/**
+ * One unit of SEO work. From Teamwork for the Work Tracker; from sample data
+ * elsewhere until those pages are wired up. `category` is a free string: real
+ * Teamwork work is categorised by task list, not by the sample category set.
+ */
 export interface Task {
   id: string;
   name: string;
-  category: TaskCategory;
+  category: string;
   project: string;
   assigneeId: string;
   status: TaskStatus;
@@ -34,7 +38,7 @@ export interface TaskCounts {
 }
 
 export interface CategoryCount {
-  category: TaskCategory;
+  category: string;
   total: number;
   completed: number;
 }
