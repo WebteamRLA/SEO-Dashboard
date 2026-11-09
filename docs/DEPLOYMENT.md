@@ -64,6 +64,12 @@ migrated with old code:
 - Stay on Prisma 7 until Better Auth supports a newer major version. Prisma labels Workers support as Preview.
 - `next.config.ts` excludes Prisma's unused engines. Without that the Worker is 58 MiB against a
   64 MiB limit. `npm run check:size` enforces a 40 MiB budget in CI.
+- Turbopack loads Prisma's WebAssembly through a loader that resolves a dynamic path, so any route
+  using Prisma traces almost all of `node_modules` (36,335 files for `/api/health`, against about
+  165 for other routes). This is upstream in Next 16.4.5. `UNTRACED_PACKAGES` in `next.config.ts`
+  keeps irrelevant packages out of the traces, and `turbopack.ignoreIssue` hides only that one
+  warning. Never add `pg` or `@prisma/client` to that list: a missing runtime package fails the
+  Cloudflare build.
 
 ## Running the Worker locally
 
