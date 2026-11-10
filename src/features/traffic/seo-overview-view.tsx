@@ -6,10 +6,12 @@ import { LineTrendChart, type ChartSeries } from "@/components/charts/charts";
 import { DataTable, type Column } from "@/components/data/data-table";
 import { EmptyState } from "@/components/data/empty-state";
 import { MetricCard, MetricGrid } from "@/components/data/metric-card";
-import { formatMonthShort, formatNumber, formatPercent } from "@/lib/format";
+import { formatNumber, formatPercent } from "@/lib/format";
+import { monthsInRange, previousRange, type DateRange } from "@/lib/date-range";
 import type { LandingPage, MonthKey, SearchMetrics, TrafficMetrics } from "@/lib/types";
 import { completeMonths } from "@/lib/month";
-import { COMPLETE_MONTHS_NOTE, describeChange, findPrior, toChartData, toMonthTable } from "./trend";
+import { aggregateSearch, aggregateTraffic, PRIOR_LABEL, roundingNote } from "./aggregate";
+import { COMPLETE_MONTHS_NOTE, describeChange, toChartData, toMonthTable } from "./trend";
 
 const CLICK_SERIES: ChartSeries[] = [{ key: "clicks", label: "Organic clicks", slot: 1 }];
 
@@ -35,31 +37,32 @@ const COLUMNS: Column<LandingPage>[] = [
 ];
 
 export function SeoOverviewView({
-  month,
-  monthLabel,
+  range,
+  periodText,
   inProgressMonth,
   search,
   traffic,
   landingPages,
 }: {
-  month: MonthKey;
-  monthLabel: string;
-  /** True when the selected month is still in progress. */
+  range: DateRange;
+  periodText: string;
+  /** The month still in progress; a period that includes it is partial. */
   inProgressMonth: MonthKey;
   search: SearchMetrics[];
   traffic: TrafficMetrics[];
   landingPages: LandingPage[];
 }) {
-  const partial = month === inProgressMonth;
+  const months = monthsInRange(range);
+  const priorMonths = monthsInRange(previousRange(range));
+  const partial = months.includes(inProgressMonth);
   const trend = completeMonths(search, inProgressMonth);
-  const current = search.find((row) => row.month === month);
-  const prior = findPrior(search, month);
-  const currentTraffic = traffic.find((row) => row.month === month);
-  const priorTraffic = findPrior(traffic, month);
-  const priorLabel = prior ? formatMonthShort(prior.month) : "";
+  const current = aggregateSearch(search, months);
+  const prior = aggregateSearch(search, priorMonths);
+  const currentTraffic = aggregateTraffic(traffic, months);
+  const priorTraffic = aggregateTraffic(traffic, priorMonths);
   // A part-month total compared with a full month would read as a collapse.
   const countDetail = (value: number | undefined, previous: number | undefined) =>
-    partial ? "Month in progress" : value === undefined ? undefined : describeChange("percent", value, previous, priorLabel);
+    partial ? "Includes the current month" : value === undefined ? undefined : describeChange("percent", value, previous, PRIOR_LABEL);
 
   return (
     <>
@@ -78,12 +81,12 @@ export function SeoOverviewView({
           <MetricCard
             label="Average CTR"
             value={formatPercent(current.ctr, 1)}
-            detail={describeChange("points", current.ctr, prior?.ctr, priorLabel)}
+            detail={describeChange("points", current.ctr, prior?.ctr, PRIOR_LABEL)}
           />
           <MetricCard
             label="Average position"
             value={current.position.toFixed(1)}
-            detail={describeChange("position", current.position, prior?.position, priorLabel)}
+            detail={describeChange("position", current.position, prior?.position, PRIOR_LABEL)}
           />
           <MetricCard
             label="Organic visitors"
@@ -92,8 +95,9 @@ export function SeoOverviewView({
           />
         </MetricGrid>
       ) : (
-        <EmptyState icon={BarChart3} title={`No search data for ${monthLabel}`} />
+        <EmptyState icon={BarChart3} title={`No search data for ${periodText}`} />
       )}
+      <p className="text-xs text-muted-foreground">{roundingNote(months)}</p>
 
       <ChartCard
         title="Organic clicks over time"
@@ -106,7 +110,7 @@ export function SeoOverviewView({
       <section className="flex flex-col gap-2">
         <div>
           <h2 className="text-sm font-semibold">Top landing pages</h2>
-          <p className="text-xs text-muted-foreground">Sample list. It does not change with the selected month.</p>
+          <p className="text-xs text-muted-foreground">Sample list. It does not change with the selected period.</p>
         </div>
         <DataTable
           caption="Top landing pages"

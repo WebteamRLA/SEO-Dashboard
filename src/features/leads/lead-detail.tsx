@@ -1,6 +1,6 @@
 "use client";
 
-import { MonthLink } from "@/components/layout/month-link";
+import { PeriodLink } from "@/components/layout/period-link";
 import { useId, useState, type FormEvent, type ReactNode } from "react";
 import { ArrowLeft, Pencil } from "lucide-react";
 import { toast } from "sonner";
@@ -13,8 +13,8 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { leadPatchChanges, STAGE_META } from "@/lib/domain/leads";
-import { formatCurrency, formatDateTime } from "@/lib/format";
-import { PIPELINE_STAGES, type Lead, type PipelineStage } from "@/lib/types";
+import { CURRENCY, formatCurrency, formatDate, formatDateTime } from "@/lib/format";
+import { PIPELINE_STAGES, type Lead, type LeadOrigin, type PipelineStage } from "@/lib/types";
 import { DealValueDialog } from "./deal-value-dialog";
 import { EditContactDialog } from "./edit-contact-dialog";
 import { parseDealValue } from "./lead-logic";
@@ -23,6 +23,30 @@ import { PreviewChangesNote } from "./preview-changes-note";
 import { SpamTag } from "./spam-tag";
 
 const UNASSIGNED = "unassigned";
+
+const ORIGIN_LABEL: Record<LeadOrigin, string> = {
+  sheet: "Courtney's Google Sheet",
+  "website-form": "Website form",
+  manual: "Added in the dashboard",
+};
+
+/** Sheet dates are often typed without a time, so sheet leads show the date only. */
+function submissionDate(lead: Lead): string | null {
+  if (!lead.submittedAt) return null;
+  return lead.origin === "sheet" ? formatDate(lead.submittedAt) : formatDateTime(lead.submittedAt);
+}
+
+/** Tracking fields, shown only when the lead has any (website-form leads). */
+function trackingFields(lead: Lead) {
+  const { medium, campaign, landingPage, referrer } = lead.attribution;
+  if (!medium && !campaign && !landingPage && !referrer) return [];
+  return [
+    { label: "Medium", value: medium },
+    { label: "Campaign", value: campaign },
+    { label: "Landing page", value: landingPage },
+    { label: "Referrer", value: referrer },
+  ];
+}
 
 function Section({ title, action, children }: { title: string; action?: ReactNode; children: ReactNode }) {
   return (
@@ -63,7 +87,7 @@ export function LeadDetail({ leadId }: { leadId: string }) {
           description="This lead is no longer in the list."
           action={
             <Button variant="outline" asChild>
-              <MonthLink href="/leads">Back to Lead Inbox</MonthLink>
+              <PeriodLink href="/leads">Back to Lead Inbox</PeriodLink>
             </Button>
           }
         />
@@ -87,13 +111,13 @@ export function LeadDetail({ leadId }: { leadId: string }) {
 
   return (
     <PageBody>
-      <MonthLink
+      <PeriodLink
         href="/leads"
         className="inline-flex w-fit items-center gap-1 rounded-sm text-sm text-muted-foreground outline-none hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring"
       >
         <ArrowLeft className="size-4" aria-hidden />
         Lead Inbox
-      </MonthLink>
+      </PeriodLink>
       <PageHeader
         title={lead.name}
         description={lead.company || undefined}
@@ -127,15 +151,18 @@ export function LeadDetail({ leadId }: { leadId: string }) {
             </Section>
             <Section title="Submission Information">
               <div className="flex flex-col gap-3">
-                <div>
-                  <p className="text-xs text-muted-foreground">Original message</p>
-                  <p className="mt-0.5 text-sm whitespace-pre-wrap">{lead.message || "—"}</p>
-                </div>
+                {lead.message ? (
+                  <div>
+                    <p className="text-xs text-muted-foreground">Original message</p>
+                    <p className="mt-0.5 text-sm whitespace-pre-wrap">{lead.message}</p>
+                  </div>
+                ) : null}
                 <Fields
                   items={[
-                    { label: "Form name", value: lead.formName },
-                    { label: "Submission page", value: lead.pageUrl },
-                    { label: "Submission date", value: formatDateTime(lead.submittedAt) },
+                    { label: "Submission date", value: submissionDate(lead) },
+                    { label: "Recorded in", value: ORIGIN_LABEL[lead.origin] },
+                    ...(lead.formName ? [{ label: "Form name", value: lead.formName }] : []),
+                    ...(lead.pageUrl ? [{ label: "Submission page", value: lead.pageUrl }] : []),
                   ]}
                 />
               </div>
@@ -144,13 +171,12 @@ export function LeadDetail({ leadId }: { leadId: string }) {
               <Fields
                 items={[
                   { label: "Source", value: lead.attribution.source },
-                  { label: "Medium", value: lead.attribution.medium },
-                  { label: "Campaign", value: lead.attribution.campaign },
-                  { label: "Landing page", value: lead.attribution.landingPage },
-                  { label: "Referrer", value: lead.attribution.referrer },
+                  { label: "Heard from", value: lead.attribution.heardFrom },
+                  ...trackingFields(lead),
                 ]}
               />
             </Section>
+            {lead.origin === "sheet" ? <SheetRecord lead={lead} /> : null}
           </div>
           <div className="flex flex-col gap-5">
             <Section title="Lead Management">
@@ -205,6 +231,60 @@ export function LeadDetail({ leadId }: { leadId: string }) {
       />
     </PageBody>
   );
+}
+
+/** What Courtney's sheet records about the deal: her note, the close date, and payments. */
+function SheetRecord({ lead }: { lead: Lead }) {
+  const received = lead.payments.reduce((sum, payment) => sum + payment.amount, 0);
+  const commission = lead.payments.reduce((sum, payment) => sum + (payment.commission ?? 0), 0);
+  return (
+    <Section title="Pipeline Record">
+      <div className="flex flex-col gap-4">
+        <div>
+          <p className="text-xs text-muted-foreground">Notes / lost reason</p>
+          <p className="mt-0.5 text-sm whitespace-pre-wrap">{lead.pipelineNote || "—"}</p>
+        </div>
+        <Fields items={[{ label: "Close date", value: lead.wonOn ? formatDate(lead.wonOn) : null }]} />
+        <div>
+          <h3 className="text-xs text-muted-foreground">Payments</h3>
+          {lead.payments.length === 0 ? (
+            <p className="mt-0.5 text-sm text-muted-foreground">None recorded.</p>
+          ) : (
+            <table className="mt-1 w-full text-sm">
+              <caption className="sr-only">Payments received for this lead</caption>
+              <thead>
+                <tr className="text-left text-xs text-muted-foreground">
+                  <th scope="col" className="py-1 font-normal">Payment</th>
+                  <th scope="col" className="py-1 text-right font-normal">Revenue</th>
+                  <th scope="col" className="py-1 text-right font-normal">Commission</th>
+                </tr>
+              </thead>
+              <tbody className="tabular-nums">
+                {lead.payments.map((payment) => (
+                  <tr key={payment.sequence} className="border-t border-border">
+                    <th scope="row" className="py-1.5 text-left font-normal">Month {payment.sequence}</th>
+                    <td className="py-1.5 text-right">{formatMoney(payment.amount)}</td>
+                    <td className="py-1.5 text-right">{payment.commission === null ? "—" : formatMoney(payment.commission)}</td>
+                  </tr>
+                ))}
+                <tr className="border-t border-border font-medium">
+                  <th scope="row" className="py-1.5 text-left">Total</th>
+                  <td className="py-1.5 text-right">{formatMoney(received)}</td>
+                  <td className="py-1.5 text-right">{formatMoney(commission)}</td>
+                </tr>
+              </tbody>
+            </table>
+          )}
+        </div>
+      </div>
+    </Section>
+  );
+}
+
+/** Exact amounts, cents included: these are payroll figures. */
+const moneyFormatter = new Intl.NumberFormat("en-US", { style: "currency", currency: CURRENCY });
+function formatMoney(value: number): string {
+  return moneyFormatter.format(value);
 }
 
 function StageField({ stage, onChange }: { stage: PipelineStage; onChange: (value: string) => void }) {

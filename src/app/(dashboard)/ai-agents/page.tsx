@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { MonthLink } from "@/components/layout/month-link";
+import { PeriodLink } from "@/components/layout/period-link";
 import { PhaseBadge } from "@/components/data/phase-badge";
 import { PreviewNotice } from "@/components/data/preview-notice";
 import { PageBody, PageHeader } from "@/components/layout/page-header";
@@ -19,8 +19,8 @@ export default async function AiAgentsPage() {
         description="The automated checks and assistants planned for the dashboard."
       />
       <PreviewNotice phase="P3">
-        No agent is running. Advanced agent capabilities are planned for P3. Basic spam filtering for the Lead Filter Agent
-        is a P1 item.
+        No agent is running. Spam filtering by the Lead Filter Agent is planned for P2, and the other
+        agents for P3.
       </PreviewNotice>
 
       <ul className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
@@ -28,9 +28,9 @@ export default async function AiAgentsPage() {
           <li key={agent.slug} className="flex flex-col gap-3 rounded-lg border border-border bg-card p-4">
             <div className="flex items-start justify-between gap-2">
               <h2 className="text-sm font-medium">
-                <MonthLink href={`/ai-agents/${agent.slug}`} className="hover:underline">
+                <PeriodLink href={`/ai-agents/${agent.slug}`} className="hover:underline">
                   {agent.name}
-                </MonthLink>
+                </PeriodLink>
               </h2>
               <PhaseBadge phase={agent.phase} />
             </div>

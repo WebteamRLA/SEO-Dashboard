@@ -1,24 +1,34 @@
 import type { Metadata } from "next";
 import { PageBody, PageHeader } from "@/components/layout/page-header";
 import { RoadmapView } from "@/features/roadmap/roadmap-view";
-import { getStrategyMonths, resolveMonth } from "@/lib/data/calendar";
+import { getStrategyMonths, resolvePagePeriod } from "@/lib/data/calendar";
 import { getRoadmap } from "@/lib/data/work";
-import { formatMonth } from "@/lib/format";
+import { describePeriod } from "@/lib/date-range";
 
 export const metadata: Metadata = { title: "Strategy Roadmap" };
 
 export default async function RoadmapPage({
   searchParams,
 }: {
-  searchParams: Promise<{ month?: string | string[] }>;
+  searchParams: Promise<{
+    range?: string | string[];
+    from?: string | string[];
+    to?: string | string[];
+    month?: string | string[];
+  }>;
 }) {
-  const month = await resolveMonth((await searchParams).month);
+  const period = await resolvePagePeriod(await searchParams);
   const [items, months] = await Promise.all([getRoadmap(), getStrategyMonths()]);
 
   return (
     <PageBody>
-      <PageHeader title="Strategy Roadmap" description={`Showing ${formatMonth(month)}`} />
-      <RoadmapView key={month} month={month} months={months} items={items} />
+      <PageHeader title="Strategy Roadmap" description={describePeriod(period)} />
+      <RoadmapView
+        key={`${period.range.from}_${period.range.to}`}
+        range={period.range}
+        months={months}
+        items={items}
+      />
     </PageBody>
   );
 }

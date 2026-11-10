@@ -88,6 +88,16 @@ const nextConfig: NextConfig = {
   cacheComponents: false,
   partialPrefetching: false,
   serverExternalPackages: ["@prisma/client", "pg"],
+  // Dev-only badge. Its default bottom-left spot covers the account button
+  // pinned to the bottom of the sidebar.
+  devIndicators: { position: "bottom-right" },
+  async redirects() {
+    return [
+      // The Delivery Roadmap moved under Settings. Keeps old links and bookmarks
+      // working; the query string, such as ?month=, is carried across.
+      { source: "/delivery-roadmap", destination: "/settings/delivery-roadmap", permanent: true },
+    ];
+  },
   outputFileTracingExcludes: {
     "*": UNTRACED_PACKAGES.map((name) => `node_modules/${name}/**`),
   },

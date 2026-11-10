@@ -8,48 +8,44 @@ import { RankedBars } from "@/components/charts/ranked-bars";
 import { EmptyState } from "@/components/data/empty-state";
 import { MetricCard, MetricGrid } from "@/components/data/metric-card";
 import { useLeads } from "@/features/leads/leads-store";
-import {
-  computeMonthlyRevenue,
-  computeRevenueBySource,
-  computeRevenueSummary,
-  leadsInMonth,
-} from "@/lib/domain/leads";
+import { computeMonthlyRevenue, computeRevenueBySource, computeRevenueSummary } from "@/lib/domain/leads";
+import { isWithin, type DateRange } from "@/lib/date-range";
 import { formatCompact, formatCurrency, formatMonthShort, formatNumber } from "@/lib/format";
 import type { MonthKey } from "@/lib/types";
 
 const REVENUE: ChartSeries[] = [{ key: "revenue", label: "Won revenue", slot: 1 }];
 
 export function RevenueView({
-  month,
-  monthLabel,
+  range,
+  periodText,
   months,
 }: {
-  month: MonthKey;
-  monthLabel: string;
+  range: DateRange;
+  periodText: string;
   months: MonthKey[];
 }) {
   const { leads } = useLeads();
 
   const data = useMemo(() => {
-    const inMonth = leadsInMonth(leads, month);
+    const inPeriod = leads.filter((lead) => isWithin(lead.submittedAt, range));
     return {
-      summary: computeRevenueSummary(inMonth),
+      summary: computeRevenueSummary(inPeriod),
       monthly: computeMonthlyRevenue(leads, months),
-      sources: computeRevenueBySource(inMonth),
+      sources: computeRevenueBySource(inPeriod),
     };
-  }, [leads, month, months]);
+  }, [leads, range, months]);
 
   const { summary, monthly, sources } = data;
 
   return (
     <>
       <MetricGrid className="lg:grid-cols-3 xl:grid-cols-3">
-        <MetricCard label="Total won revenue" value={formatCurrency(summary.totalWon)} detail={`Leads submitted in ${monthLabel}`} />
-        <MetricCard label="Won deals" value={formatNumber(summary.wonDeals)} detail={`Leads submitted in ${monthLabel}`} />
+        <MetricCard label="Total won revenue" value={formatCurrency(summary.totalWon)} detail="Leads submitted in this period" />
+        <MetricCard label="Won deals" value={formatNumber(summary.wonDeals)} detail="Leads submitted in this period" />
         <MetricCard
           label="Average deal value"
           value={formatCurrency(summary.averageDeal)}
-          detail={summary.wonDeals === 0 ? "No won deals this month" : undefined}
+          detail={summary.wonDeals === 0 ? "No won deals in this period" : undefined}
         />
       </MetricGrid>
 
@@ -78,7 +74,7 @@ export function RevenueView({
 
       <ChartCard
         title="Revenue by lead source"
-        description={`Won revenue from leads submitted in ${monthLabel}`}
+        description="Won revenue from leads submitted in this period"
         table={{
           columns: ["Source", "Won revenue", "Won deals"],
           rows: sources.map((row) => ({
@@ -88,7 +84,7 @@ export function RevenueView({
         }}
       >
         {sources.length === 0 ? (
-          <EmptyState icon={DollarSign} title={`No won deals in ${monthLabel}`} description="Mark a lead as Won in the pipeline and it appears here." />
+          <EmptyState icon={DollarSign} title={`No won deals in ${periodText}`} description="Mark a lead as Won in the pipeline and it appears here." />
         ) : (
           <RankedBars
             label="Won revenue by lead source"

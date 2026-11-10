@@ -11,3 +11,14 @@ DIRECT_DATABASE_URL=""
 TEAMWORK_BASE_URL=""
 # API key: Teamwork > profile > Edit My Details > API & Mobile > API Token.
 TEAMWORK_API_KEY=""
+
+# Google sign-in (Better Auth). In Google Cloud, add the redirect URI
+# <BETTER_AUTH_URL>/api/auth/callback/google to the OAuth client.
+GOOGLE_CLIENT_ID=""
+GOOGLE_CLIENT_SECRET=""
+# Signs session cookies. Generate with: openssl rand -base64 32
+BETTER_AUTH_SECRET=""
+# This deployment's address, e.g. http://localhost:3000. No trailing slash.
+BETTER_AUTH_URL=""
+# Comma-separated emails that are always admins, so the first person can sign in.
+AUTH_BOOTSTRAP_ADMINS=""

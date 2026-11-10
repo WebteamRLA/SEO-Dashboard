@@ -1,12 +1,8 @@
 "use client";
 
-import { MonthLink } from "@/components/layout/month-link";
+import { PeriodLink } from "@/components/layout/period-link";
 import { usePathname } from "next/navigation";
-import { useState } from "react";
-import { Bell, ChevronRight, FlaskConical, LogOut, Menu, Settings } from "lucide-react";
-import { toast } from "sonner";
-import { ConfirmDialog } from "@/components/data/confirm-dialog";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Bell, ChevronRight, Menu } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -16,11 +12,10 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { findActiveNav } from "@/config/navigation";
-import { formatDate, getInitials } from "@/lib/format";
-import type { AppNotification, MonthKey, TeamMember } from "@/lib/types";
-import { MonthSelect } from "./month-select";
+import { formatDate } from "@/lib/format";
+import type { AppNotification, ISODate } from "@/lib/types";
+import { DateRangeFilter } from "./date-range-filter";
 
 function Breadcrumb() {
   const pathname = usePathname();
@@ -41,12 +36,12 @@ function Breadcrumb() {
       ) : null}
       {isDetail ? (
         <>
-          <MonthLink
+          <PeriodLink
             href={item.href}
             className="truncate text-muted-foreground hover:text-foreground"
           >
             {item.label}
-          </MonthLink>
+          </PeriodLink>
           <ChevronRight className="size-3.5 shrink-0 text-muted-foreground" aria-hidden />
           <span className="truncate font-medium" aria-current="page">Details</span>
         </>
@@ -79,14 +74,14 @@ function Notifications({ notifications }: { notifications: AppNotification[] }) 
         <DropdownMenuSeparator />
         {notifications.map((notification) => (
           <DropdownMenuItem key={notification.id} asChild>
-            <MonthLink href={notification.href} className="flex flex-col items-start gap-0.5">
+            <PeriodLink href={notification.href} className="flex flex-col items-start gap-0.5">
               <span className="flex w-full items-center gap-2 font-medium">
                 {notification.title}
                 {notification.read ? null : <span className="sr-only">Unread</span>}
               </span>
               <span className="text-xs text-muted-foreground">{notification.description}</span>
               <span className="text-xs text-muted-foreground">{formatDate(notification.createdAt)}</span>
-            </MonthLink>
+            </PeriodLink>
           </DropdownMenuItem>
         ))}
       </DropdownMenuContent>
@@ -94,66 +89,18 @@ function Notifications({ notifications }: { notifications: AppNotification[] }) 
   );
 }
 
-function UserMenu({ user }: { user: TeamMember }) {
-  const [confirmingLogout, setConfirmingLogout] = useState(false);
-  return (
-    <>
-      <DropdownMenu>
-        <DropdownMenuTrigger asChild>
-          <Button variant="ghost" size="icon-sm" className="rounded-full" aria-label={`Account menu for ${user.name}`}>
-            <Avatar className="size-7">
-              <AvatarFallback className="bg-accent text-xs font-medium text-accent-foreground">
-                {getInitials(user.name)}
-              </AvatarFallback>
-            </Avatar>
-          </Button>
-        </DropdownMenuTrigger>
-        <DropdownMenuContent align="end" className="w-56">
-          <DropdownMenuLabel>
-            <span className="block truncate text-sm font-medium text-foreground">{user.name}</span>
-            <span className="block truncate text-xs font-normal text-muted-foreground">{user.email}</span>
-          </DropdownMenuLabel>
-          <DropdownMenuSeparator />
-          <DropdownMenuItem asChild>
-            <MonthLink href="/settings/notifications">
-              <Settings className="size-4" aria-hidden />
-              User settings
-            </MonthLink>
-          </DropdownMenuItem>
-          <DropdownMenuItem onSelect={() => setConfirmingLogout(true)}>
-            <LogOut className="size-4" aria-hidden />
-            Log out
-          </DropdownMenuItem>
-        </DropdownMenuContent>
-      </DropdownMenu>
-      <ConfirmDialog
-        open={confirmingLogout}
-        onOpenChange={setConfirmingLogout}
-        title="Log out?"
-        description="Sign-in arrives with the backend step, so this preview stays open after you confirm."
-        confirmLabel="Log out"
-        onConfirm={() => toast.info("Log out is not active in this preview.")}
-      />
-    </>
-  );
-}
-
 export function Topbar({
-  user,
-  months,
-  defaultMonth,
+  today,
   notifications,
   onOpenMenu,
 }: {
-  user: TeamMember;
-  months: MonthKey[];
-  defaultMonth: MonthKey;
+  today: ISODate;
   notifications: AppNotification[];
   onOpenMenu: () => void;
 }) {
   const pathname = usePathname();
   const active = findActiveNav(pathname);
-  const monthScoped = active?.item.monthScoped === true && active.item.href === pathname;
+  const periodScoped = active?.item.periodScoped === true && active.item.href === pathname;
 
   return (
     <header className="sticky top-0 z-30 flex h-14 shrink-0 items-center gap-2 border-b border-border bg-card px-3 sm:px-5">
@@ -163,21 +110,8 @@ export function Topbar({
       <div className="min-w-0 flex-1">
         <Breadcrumb />
       </div>
-      <Tooltip>
-        <TooltipTrigger asChild>
-          <span
-            tabIndex={0}
-            className="hidden items-center gap-1.5 rounded-md border border-border px-2 py-1 text-xs font-medium text-muted-foreground outline-none focus-visible:ring-2 focus-visible:ring-ring md:inline-flex"
-          >
-            <FlaskConical className="size-3.5" aria-hidden />
-            Sample data
-          </span>
-        </TooltipTrigger>
-        <TooltipContent>Everything shown here is sample data, not live RLA figures.</TooltipContent>
-      </Tooltip>
-      {monthScoped ? <MonthSelect months={months} defaultMonth={defaultMonth} /> : null}
+      {periodScoped ? <DateRangeFilter today={today} /> : null}
       <Notifications notifications={notifications} />
-      <UserMenu user={user} />
     </header>
   );
 }

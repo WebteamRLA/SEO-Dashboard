@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { completeMonths, isMonthKey, pickMonth, toMonthKey } from "./month";
+import { completeMonths, isMonthKey, toMonthKey } from "./month";
 
 const available = ["2026-09", "2026-10"];
 
@@ -13,26 +13,13 @@ describe("isMonthKey", () => {
   });
 });
 
-describe("pickMonth", () => {
-  it("returns a known month", () => {
-    expect(pickMonth("2026-09", available, "2026-10")).toBe("2026-09");
-  });
-
-  it("uses the first value of a repeated parameter", () => {
-    expect(pickMonth(["2026-09", "2026-10"], available, "2026-10")).toBe("2026-09");
-  });
-
-  it("falls back for missing, malformed, or unavailable months", () => {
-    expect(pickMonth(undefined, available, "2026-10")).toBe("2026-10");
-    expect(pickMonth("<script>", available, "2026-10")).toBe("2026-10");
-    expect(pickMonth("2020-01", available, "2026-10")).toBe("2026-10");
-  });
-});
 
 describe("toMonthKey", () => {
   it("takes the month from dates and timestamps", () => {
     expect(toMonthKey("2026-10-05")).toBe("2026-10");
     expect(toMonthKey("2026-10-05T09:00:00Z")).toBe("2026-10");
+    // 23:30 on Sep 30 in New York is already October in UTC.
+    expect(toMonthKey("2026-10-01T03:30:00.000Z")).toBe("2026-09");
   });
 });
 

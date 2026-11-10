@@ -1,22 +1,20 @@
 "use client";
 
 import { useState, type ReactNode } from "react";
-import { FlaskConical } from "lucide-react";
 import { Sheet, SheetContent, SheetDescription, SheetTitle } from "@/components/ui/sheet";
-import type { AppNotification, MonthKey, TeamMember } from "@/lib/types";
+import type { AppNotification, ISODate, SessionUser } from "@/lib/types";
 import { SidebarBrand, SidebarNav } from "./sidebar-nav";
+import { SidebarUser } from "./sidebar-user";
 import { Topbar } from "./topbar";
 
 export function AppShell({
   user,
-  months,
-  defaultMonth,
+  today,
   notifications,
   children,
 }: {
-  user: TeamMember;
-  months: MonthKey[];
-  defaultMonth: MonthKey;
+  user: SessionUser;
+  today: ISODate;
   notifications: AppNotification[];
   children: ReactNode;
 }) {
@@ -34,6 +32,7 @@ export function AppShell({
       <aside className="hidden w-64 shrink-0 flex-col border-r border-sidebar-border bg-sidebar text-sidebar-foreground lg:flex">
         <SidebarBrand />
         <SidebarNav />
+        <SidebarUser user={user} />
       </aside>
 
       <Sheet open={menuOpen} onOpenChange={setMenuOpen}>
@@ -42,22 +41,16 @@ export function AppShell({
           <SheetDescription className="sr-only">Main navigation for the dashboard.</SheetDescription>
           <SidebarBrand />
           <SidebarNav onNavigate={() => setMenuOpen(false)} />
+          <SidebarUser user={user} onNavigate={() => setMenuOpen(false)} />
         </SheetContent>
       </Sheet>
 
       <div className="flex min-w-0 flex-1 flex-col">
         <Topbar
-          user={user}
-          months={months}
-          defaultMonth={defaultMonth}
+          today={today}
           notifications={notifications}
           onOpenMenu={() => setMenuOpen(true)}
         />
-        {/* The topbar chip has no room on phones, and sample figures must stay marked. */}
-        <p className="flex shrink-0 items-center justify-center gap-1.5 border-b border-border bg-muted px-3 py-1 text-xs text-muted-foreground md:hidden">
-          <FlaskConical className="size-3.5" aria-hidden />
-          Sample data, not live RLA figures
-        </p>
         <main id="main" className="relative min-h-0 flex-1 overflow-y-auto px-4 py-5 sm:px-6">
           <div className="mx-auto w-full max-w-[1400px]">{children}</div>
         </main>

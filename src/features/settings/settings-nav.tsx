@@ -1,6 +1,6 @@
 "use client";
 
-import { MonthLink } from "@/components/layout/month-link";
+import { PeriodLink } from "@/components/layout/period-link";
 import { usePathname } from "next/navigation";
 import { NAVIGATION } from "@/config/navigation";
 import { cn } from "@/lib/utils";
@@ -17,7 +17,7 @@ export function SettingsNav() {
           const active = pathname === item.href || pathname.startsWith(`${item.href}/`);
           return (
             <li key={item.href}>
-              <MonthLink
+              <PeriodLink
                 href={item.href}
                 aria-current={active ? "page" : undefined}
                 className={cn(
@@ -28,7 +28,7 @@ export function SettingsNav() {
                 )}
               >
                 {item.label}
-              </MonthLink>
+              </PeriodLink>
             </li>
           );
         })}

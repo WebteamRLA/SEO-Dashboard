@@ -35,12 +35,12 @@ export function filterLeads(
 
   return leads.filter((lead) => {
     if (query) {
-      const haystack = `${lead.name} ${lead.email} ${lead.company}`.toLowerCase();
+      const haystack = `${lead.name} ${lead.email ?? ""} ${lead.company ?? ""}`.toLowerCase();
       if (!haystack.includes(query)) return false;
     }
     if (filters.source !== "all" && lead.attribution.source !== filters.source) return false;
     if (filters.stage !== "all" && lead.stage !== filters.stage) return false;
-    if (since !== null && Date.parse(lead.submittedAt) < since) return false;
+    if (since !== null && (lead.submittedAt === null || Date.parse(lead.submittedAt) < since)) return false;
     return true;
   });
 }
@@ -82,10 +82,23 @@ export type ContactErrors = Partial<Record<keyof ContactInput, string>>;
 
 const EMAIL_SHAPE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
+/** Name is required. Email is optional, since older leads have none, but must be valid if given. */
 export function validateContact(input: ContactInput): ContactErrors {
   const errors: ContactErrors = {};
   if (!input.name.trim()) errors.name = "Enter a name.";
-  if (!input.email.trim()) errors.email = "Enter an email address.";
-  else if (!EMAIL_SHAPE.test(input.email.trim())) errors.email = "Enter an email like name@example.com.";
+  if (input.email.trim() && !EMAIL_SHAPE.test(input.email.trim())) {
+    errors.email = "Enter an email like name@example.com.";
+  }
   return errors;
+}
+
+/** Form values to a lead patch: blank optional fields become null. */
+export function contactToPatch(input: ContactInput): Pick<Lead, "name" | "email" | "phone" | "company"> {
+  const optional = (value: string) => value.trim() || null;
+  return {
+    name: input.name.trim(),
+    email: optional(input.email),
+    phone: optional(input.phone),
+    company: optional(input.company),
+  };
 }

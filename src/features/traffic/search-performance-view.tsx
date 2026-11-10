@@ -8,10 +8,12 @@ import { DataTable, type Column } from "@/components/data/data-table";
 import { EmptyState } from "@/components/data/empty-state";
 import { MetricCard, MetricGrid } from "@/components/data/metric-card";
 import { SearchInput } from "@/components/data/search-input";
-import { formatMonthShort, formatNumber, formatPercent } from "@/lib/format";
+import { formatNumber, formatPercent } from "@/lib/format";
+import { monthsInRange, previousRange, type DateRange } from "@/lib/date-range";
 import type { KeywordPerformance, MonthKey, SearchMetrics } from "@/lib/types";
 import { completeMonths } from "@/lib/month";
-import { COMPLETE_MONTHS_NOTE, describeChange, findPrior, toChartData, toMonthTable } from "./trend";
+import { aggregateSearch, PRIOR_LABEL, roundingNote } from "./aggregate";
+import { COMPLETE_MONTHS_NOTE, describeChange, toChartData, toMonthTable } from "./trend";
 
 const CLICKS: ChartSeries[] = [{ key: "clicks", label: "Search clicks", slot: 1 }];
 const IMPRESSIONS: ChartSeries[] = [{ key: "impressions", label: "Impressions", slot: 1 }];
@@ -40,26 +42,26 @@ const COLUMNS: Column<KeywordPerformance>[] = [
 ];
 
 export function SearchPerformanceView({
-  month,
-  monthLabel,
+  range,
+  periodText,
   inProgressMonth,
   search,
   keywords,
 }: {
-  month: MonthKey;
-  monthLabel: string;
+  range: DateRange;
+  periodText: string;
   inProgressMonth: MonthKey;
   search: SearchMetrics[];
   keywords: KeywordPerformance[];
 }) {
-  const partial = month === inProgressMonth;
+  const months = monthsInRange(range);
+  const partial = months.includes(inProgressMonth);
   const trend = completeMonths(search, inProgressMonth);
   const [query, setQuery] = useState("");
-  const current = search.find((row) => row.month === month);
-  const prior = findPrior(search, month);
-  const priorLabel = prior ? formatMonthShort(prior.month) : "";
+  const current = aggregateSearch(search, months);
+  const prior = aggregateSearch(search, monthsInRange(previousRange(range)));
   const countDetail = (value: number | undefined, previous: number | undefined) =>
-    partial ? "Month in progress" : value === undefined ? undefined : describeChange("percent", value, previous, priorLabel);
+    partial ? "Includes the current month" : value === undefined ? undefined : describeChange("percent", value, previous, PRIOR_LABEL);
 
   const filtered = useMemo(() => {
     const needle = query.trim().toLowerCase();
@@ -72,16 +74,17 @@ export function SearchPerformanceView({
         <MetricGrid>
           <MetricCard label="Search clicks" value={formatNumber(current.clicks)} detail={countDetail(current.clicks, prior?.clicks)} />
           <MetricCard label="Impressions" value={formatNumber(current.impressions)} detail={countDetail(current.impressions, prior?.impressions)} />
-          <MetricCard label="CTR" value={formatPercent(current.ctr, 1)} detail={describeChange("points", current.ctr, prior?.ctr, priorLabel)} />
+          <MetricCard label="CTR" value={formatPercent(current.ctr, 1)} detail={describeChange("points", current.ctr, prior?.ctr, PRIOR_LABEL)} />
           <MetricCard
             label="Average position"
             value={current.position.toFixed(1)}
-            detail={describeChange("position", current.position, prior?.position, priorLabel)}
+            detail={describeChange("position", current.position, prior?.position, PRIOR_LABEL)}
           />
         </MetricGrid>
       ) : (
-        <EmptyState icon={BarChart3} title={`No search data for ${monthLabel}`} />
+        <EmptyState icon={BarChart3} title={`No search data for ${periodText}`} />
       )}
+      <p className="text-xs text-muted-foreground">{roundingNote(months)}</p>
 
       <div className="grid gap-3 lg:grid-cols-2">
         <ChartCard
@@ -132,7 +135,7 @@ export function SearchPerformanceView({
         <div className="flex flex-wrap items-end justify-between gap-2">
           <div>
             <h2 className="text-sm font-semibold">Keyword performance</h2>
-            <p className="text-xs text-muted-foreground">Sample list. It does not change with the selected month.</p>
+            <p className="text-xs text-muted-foreground">Sample list. It does not change with the selected period.</p>
           </div>
           <SearchInput value={query} onChange={setQuery} placeholder="Search keywords" />
         </div>

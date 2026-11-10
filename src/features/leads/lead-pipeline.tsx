@@ -1,6 +1,6 @@
 "use client";
 
-import { MonthLink } from "@/components/layout/month-link";
+import { PeriodLink } from "@/components/layout/period-link";
 import { useMemo, useState } from "react";
 import {
   DndContext,
@@ -121,10 +121,10 @@ export function LeadPipeline() {
               </Label>
             </div>
             <Button variant="outline" asChild>
-              <MonthLink href="/leads">
+              <PeriodLink href="/leads">
                 <List aria-hidden />
                 Inbox
-              </MonthLink>
+              </PeriodLink>
             </Button>
           </>
         }
@@ -270,13 +270,15 @@ function LeadCardBody({
       <div className="flex items-start gap-1">
         {handle}
         <div className="min-w-0 flex-1">
-          <MonthLink
+          <PeriodLink
             href={`/leads/${lead.id}`}
             className="rounded-sm font-medium outline-none hover:underline focus-visible:ring-2 focus-visible:ring-ring"
           >
             {lead.name}
-          </MonthLink>
-          <p className="truncate text-xs text-muted-foreground">{lead.company || "No company"}</p>
+          </PeriodLink>
+          {lead.company && lead.company !== lead.name ? (
+            <p className="truncate text-xs text-muted-foreground">{lead.company}</p>
+          ) : null}
         </div>
         {menu}
       </div>

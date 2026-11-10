@@ -2,9 +2,10 @@ import { formatCurrency, formatNumber } from "@/lib/format";
 import type { LeadMetrics, LeadSourceCount, Progress, TaskCounts } from "@/lib/types";
 
 export interface SummaryInput {
-  monthLabel: string;
+  periodText: string;
   tasks: TaskCounts;
-  monthlyPlan: Progress;
+  /** Null until the roadmap has a live source; the line is then left out. */
+  planProgress: Progress | null;
   leads: LeadMetrics;
   /** Ranked, largest first. */
   sources: LeadSourceCount[];
@@ -27,30 +28,30 @@ function describeTopSource(sources: LeadSourceCount[]): string | null {
   return `${joinNames(leaders.map((row) => row.source))} are tied as the largest sources with ${count(top.count, "lead")} each.`;
 }
 
-/** Plain statements derived from the month's figures. Nothing is invented. */
+/** Plain statements derived from the period's figures. Nothing is invented. */
 export function buildMonthSummary(input: SummaryInput): string[] {
-  const { monthLabel, tasks, monthlyPlan, leads, sources } = input;
+  const { periodText, tasks, planProgress, leads, sources } = input;
   const lines: string[] = [];
 
   if (tasks.total === 0) {
-    lines.push(`No SEO tasks are scheduled for ${monthLabel}.`);
+    lines.push(`No SEO tasks fall in ${periodText}.`);
   } else {
     lines.push(
       `${formatNumber(tasks.completed)} of ${formatNumber(tasks.total)} tasks are completed (${formatNumber(tasks.inProgress)} in progress, ${formatNumber(tasks.todo)} to do).`,
     );
   }
 
-  if (monthlyPlan.total > 0) {
+  if (planProgress && planProgress.total > 0) {
     lines.push(
-      `${formatNumber(monthlyPlan.completed)} of ${formatNumber(monthlyPlan.total)} roadmap items for the month are complete (${monthlyPlan.percent}%).`,
+      `${formatNumber(planProgress.completed)} of ${formatNumber(planProgress.total)} roadmap items for the period are complete (${planProgress.percent}%).`,
     );
   }
 
   if (leads.genuine === 0) {
     lines.push(
       leads.spam > 0
-        ? `No genuine leads this month. ${count(leads.spam, "submission")} marked as spam.`
-        : "No leads were received this month.",
+        ? `No genuine leads in this period. ${count(leads.spam, "submission")} marked as spam.`
+        : "No leads were received in this period.",
     );
   } else {
     const organicShare = Math.round((leads.organic / leads.genuine) * 100);
@@ -63,8 +64,8 @@ export function buildMonthSummary(input: SummaryInput): string[] {
 
   lines.push(
     leads.won > 0
-      ? `${count(leads.won, "won deal")} worth ${formatCurrency(leads.wonRevenue)}, from leads submitted this month.`
-      : "No won deals from leads submitted this month.",
+      ? `${count(leads.won, "won deal")} worth ${formatCurrency(leads.wonRevenue)}, from leads submitted in this period.`
+      : "No won deals from leads submitted in this period.",
   );
   return lines;
 }

@@ -1,3 +1,4 @@
+import { isWithin, type DateRange } from "@/lib/date-range";
 import type {
   CategoryCount,
   MonthKey,
@@ -7,6 +8,15 @@ import type {
   Task,
   TaskCounts,
 } from "@/lib/types";
+
+/**
+ * Whether a task belongs to a reporting period: a completed task by the day it
+ * was completed, an open task by its due date. A completed task with no
+ * completion date never counts.
+ */
+export function taskInPeriod(task: Task, range: DateRange): boolean {
+  return isWithin(task.status === "completed" ? task.completedDate : task.dueDate, range);
+}
 
 export function toProgress(completed: number, total: number): Progress {
   return {

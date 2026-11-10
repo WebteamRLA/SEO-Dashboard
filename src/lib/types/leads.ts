@@ -1,4 +1,4 @@
-import type { ISODateTime } from "./common";
+import type { ISODate, ISODateTime } from "./common";
 
 export const PIPELINE_STAGES = [
   "new",
@@ -11,13 +11,16 @@ export const PIPELINE_STAGES = [
 ] as const;
 export type PipelineStage = (typeof PIPELINE_STAGES)[number];
 
+/** The channel a lead came through, as RLA classifies it. */
 export const LEAD_SOURCES = [
   "Organic Search",
-  "Direct",
+  "AI Search",
   "Referral",
   "Paid Search",
   "Social",
+  "Direct",
   "Email",
+  "Unknown",
 ] as const;
 export type LeadSource = (typeof LEAD_SOURCES)[number];
 
@@ -47,27 +50,50 @@ export interface LeadActivity {
   createdAt: ISODateTime;
 }
 
+/** Where a lead record came from. */
+export type LeadOrigin = "sheet" | "website-form" | "manual";
+
 export interface LeadAttribution {
   source: LeadSource;
-  medium: string;
+  /** How the person says they found RLA, in their words ("ChatGPT", "LinkedIn"). */
+  heardFrom: string | null;
+  /** Tracking details. Only website-form leads carry these. */
+  medium: string | null;
   campaign: string | null;
-  landingPage: string;
+  landingPage: string | null;
   referrer: string | null;
+}
+
+/** Money received for a won lead, in USD. */
+export interface LeadPayment {
+  /** 1 to 4: the sheet's "Revenue Month N". */
+  sequence: number;
+  amount: number;
+  commission: number | null;
 }
 
 export interface Lead {
   id: string;
+  origin: LeadOrigin;
+  /** Display name, never empty: the person, else the company, else the email. */
   name: string;
-  email: string;
-  phone: string;
-  company: string;
-  message: string;
-  formName: string;
-  pageUrl: string;
-  submittedAt: ISODateTime;
+  email: string | null;
+  phone: string | null;
+  company: string | null;
+  message: string | null;
+  formName: string | null;
+  pageUrl: string | null;
+  /** Null when the source has no date for the lead. */
+  submittedAt: ISODateTime | null;
   attribution: LeadAttribution;
   stage: PipelineStage;
+  /** Revenue received so far: the sum of `payments`, or a value set in the dashboard. */
   dealValue: number | null;
+  /** The pipeline's "Notes/Lost Reason", as Courtney wrote it. */
+  pipelineNote: string | null;
+  /** The close date. Revenue is reported by this date. */
+  wonOn: ISODate | null;
+  payments: LeadPayment[];
   assigneeId: string | null;
   spamFilteredBy: SpamFilteredBy | null;
   notes: LeadNote[];

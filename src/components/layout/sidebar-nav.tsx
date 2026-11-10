@@ -8,7 +8,7 @@ import { PhaseBadge } from "@/components/data/phase-badge";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { findActiveNav, NAVIGATION, type NavGroup } from "@/config/navigation";
 import { cn } from "@/lib/utils";
-import { useMonthHref } from "./month-link";
+import { usePeriodHref } from "./period-link";
 
 const rowClass =
   "flex h-9 w-full items-center gap-2.5 rounded-md px-2.5 text-sm font-medium outline-none transition-colors hover:bg-muted focus-visible:ring-2 focus-visible:ring-ring";
@@ -23,7 +23,7 @@ function NavGroupRow({
   activeHref: string | undefined;
   onNavigate?: () => void;
 }) {
-  const withMonth = useMonthHref();
+  const withPeriod = usePeriodHref();
   const containsActive = group.items.some((item) => item.href === activeHref);
   const [manuallyOpen, setManuallyOpen] = useState(false);
   const Icon = group.icon;
@@ -32,7 +32,7 @@ function NavGroupRow({
   if (group.items.length === 1 && only) {
     return (
       <Link
-        href={withMonth(only.href)}
+        href={withPeriod(only.href)}
         onClick={onNavigate}
         aria-current={containsActive ? "page" : undefined}
         className={cn(rowClass, containsActive && activeClass)}
@@ -64,7 +64,7 @@ function NavGroupRow({
             return (
               <li key={item.href}>
                 <Link
-                  href={withMonth(item.href)}
+                  href={withPeriod(item.href)}
                   onClick={onNavigate}
                   aria-current={active ? "page" : undefined}
                   className={cn(rowClass, "h-8 font-normal", active && cn(activeClass, "font-medium"))}

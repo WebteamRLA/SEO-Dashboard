@@ -1,12 +1,11 @@
 import type { Metadata } from "next";
-import { MonthLink } from "@/components/layout/month-link";
+import { PeriodLink } from "@/components/layout/period-link";
 import { notFound } from "next/navigation";
 import { ArrowLeft } from "lucide-react";
 import { PhaseBadge } from "@/components/data/phase-badge";
 import { PreviewNotice } from "@/components/data/preview-notice";
 import { PageBody, PageHeader } from "@/components/layout/page-header";
 import { AgentStatusBadge } from "@/features/ai-agents/agent-status-badge";
-import { LeadFilterNotice } from "@/features/ai-agents/lead-filter-notice";
 import { getAiAgent } from "@/lib/data/operations";
 import type { Phase } from "@/lib/types";
 
@@ -32,16 +31,15 @@ export default async function AiAgentPage({ params }: AgentPageProps) {
   return (
     <PageBody>
       <PageHeader title={agent.name} phase={agent.phase} />
-      <MonthLink
+      <PeriodLink
         href="/ai-agents"
         className="inline-flex w-fit items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground"
       >
         <ArrowLeft className="size-4" aria-hidden />
         All AI agents
-      </MonthLink>
-      {agent.phase === "P1" ? (
-        <LeadFilterNotice />
-      ) : (
+      </PeriodLink>
+      {/* P1 work ships as a real feature, so only planned phases get a preview notice. */}
+      {agent.phase !== "P1" && (
         <PreviewNotice phase={agent.phase}>
           No agent is running. The purpose, expected outcome, and capabilities below describe planned work.
         </PreviewNotice>

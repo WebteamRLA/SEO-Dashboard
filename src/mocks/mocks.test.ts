@@ -19,7 +19,7 @@ describe("sample data invariants", () => {
   it("has no lead event after today", () => {
     for (const lead of leads) {
       const events = [lead.submittedAt, ...lead.activity.map((a) => a.createdAt), ...lead.notes.map((n) => n.createdAt)];
-      for (const event of events) expect(event <= today).toBe(true);
+      for (const event of events) expect(event !== null && event <= today).toBe(true);
     }
   });
 
@@ -44,7 +44,7 @@ describe("sample data invariants", () => {
 
   it("only uses reserved, non-routable contact details", () => {
     for (const lead of leads) {
-      expect(lead.email.endsWith(".example")).toBe(true);
+      expect(lead.email?.endsWith(".example")).toBe(true);
       expect(lead.phone).toMatch(/555-01\d\d$/);
     }
   });
@@ -55,7 +55,7 @@ describe("sample data invariants", () => {
   });
 
   it("has won revenue in the default month", () => {
-    expect(leads.some((lead) => lead.stage === "won" && toMonthKey(lead.submittedAt) === "2026-10")).toBe(true);
+    expect(leads.some((lead) => lead.stage === "won" && lead.submittedAt !== null && toMonthKey(lead.submittedAt) === "2026-10")).toBe(true);
   });
 
   it("keeps a task's dates consistent with its status and month", () => {

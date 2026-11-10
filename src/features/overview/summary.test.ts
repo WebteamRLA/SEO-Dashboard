@@ -2,9 +2,9 @@ import { describe, expect, it } from "vitest";
 import { buildMonthSummary } from "./summary";
 
 const base = {
-  monthLabel: "October 2026",
+  periodText: "Oct 1 – 31, 2026",
   tasks: { total: 10, todo: 2, inProgress: 3, completed: 5 },
-  monthlyPlan: { completed: 1, total: 4, percent: 25 },
+  planProgress: { completed: 1, total: 4, percent: 25 },
   leads: { total: 12, spam: 2, genuine: 10, organic: 5, won: 1, wonRevenue: 5000 },
   sources: [{ source: "Organic Search" as const, count: 5 }],
 };
@@ -17,18 +17,24 @@ describe("buildMonthSummary", () => {
     expect(lines.at(-1)).toContain("1 won deal worth $5,000");
   });
 
-  it("handles an empty month", () => {
+  it("leaves out roadmap progress while the roadmap is not connected", () => {
+    const lines = buildMonthSummary({ ...base, planProgress: null });
+    expect(lines.join(" ")).not.toContain("roadmap");
+    expect(buildMonthSummary(base).join(" ")).toContain("roadmap items");
+  });
+
+  it("handles an empty period", () => {
     const lines = buildMonthSummary({
       ...base,
       tasks: { total: 0, todo: 0, inProgress: 0, completed: 0 },
-      monthlyPlan: { completed: 0, total: 0, percent: 0 },
+      planProgress: { completed: 0, total: 0, percent: 0 },
       leads: { total: 0, spam: 0, genuine: 0, organic: 0, won: 0, wonRevenue: 0 },
       sources: [],
     });
     expect(lines).toEqual([
-      "No SEO tasks are scheduled for October 2026.",
-      "No leads were received this month.",
-      "No won deals from leads submitted this month.",
+      "No SEO tasks fall in Oct 1 – 31, 2026.",
+      "No leads were received in this period.",
+      "No won deals from leads submitted in this period.",
     ]);
   });
 

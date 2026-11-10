@@ -172,6 +172,7 @@ function buildLead(index: number, month: MonthKey): Lead {
 
   return {
     id,
+    origin: "website-form",
     name: `${first} ${last}`,
     email: `${first.toLowerCase()}.${last.toLowerCase()}@${domain}`,
     phone: `(202) 555-01${pad(random.int(0, 99))}`,
@@ -182,6 +183,7 @@ function buildLead(index: number, month: MonthKey): Lead {
     submittedAt,
     attribution: {
       source: channel.source,
+      heardFrom: null,
       medium: channel.medium,
       campaign: campaigns ? random.pick(campaigns) : null,
       landingPage: random.pick(LANDING_PAGES),
@@ -189,6 +191,9 @@ function buildLead(index: number, month: MonthKey): Lead {
     },
     stage,
     dealValue: hasValue ? random.int(6, 72) * 500 : null,
+    pipelineNote: null,
+    wonOn: stage === "won" ? submittedAt.slice(0, 10) : null,
+    payments: [],
     assigneeId,
     spamFilteredBy: isSpam ? "ai" : null,
     notes,
@@ -199,4 +204,4 @@ function buildLead(index: number, month: MonthKey): Lead {
 let nextIndex = 0;
 export const leads: Lead[] = ACTIVE_MONTHS.flatMap((month) =>
   Array.from({ length: MONTHLY_VOLUME[month] ?? 0 }, () => buildLead(nextIndex++, month)),
-).sort((a, b) => b.submittedAt.localeCompare(a.submittedAt));
+).sort((a, b) => (b.submittedAt ?? "").localeCompare(a.submittedAt ?? ""));

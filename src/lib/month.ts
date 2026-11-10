@@ -1,3 +1,4 @@
+import { instantMonthKey, isCalendarDate } from "@/lib/format";
 import type { MonthKey } from "@/lib/types";
 
 const MONTH_PATTERN = /^\d{4}-(0[1-9]|1[0-2])$/;
@@ -6,22 +7,14 @@ export function isMonthKey(value: unknown): value is MonthKey {
   return typeof value === "string" && MONTH_PATTERN.test(value);
 }
 
-/**
- * Resolves the `?month=` URL parameter. The URL is untrusted input, so anything
- * that is not a known month falls back rather than reaching a query or a chart.
- */
-export function pickMonth(
-  raw: string | string[] | null | undefined,
-  available: readonly MonthKey[],
-  fallback: MonthKey,
-): MonthKey {
-  const value = Array.isArray(raw) ? raw[0] : raw;
-  return isMonthKey(value) && available.includes(value) ? value : fallback;
-}
 
-/** The `YYYY-MM` portion of an ISO date or timestamp. */
+/**
+ * The month of an ISO date or timestamp. A calendar date keeps its own month; a
+ * timestamp takes its month in the reporting time zone, so a lead sent late on
+ * the last day of a month counts in that month.
+ */
 export function toMonthKey(isoDate: string): MonthKey {
-  return isoDate.slice(0, 7);
+  return isoDate.length <= 7 || isCalendarDate(isoDate) ? isoDate.slice(0, 7) : instantMonthKey(isoDate);
 }
 
 /**

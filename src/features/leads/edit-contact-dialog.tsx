@@ -13,7 +13,9 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import type { Lead } from "@/lib/types";
-import { validateContact, type ContactErrors, type ContactInput } from "./lead-logic";
+import { contactToPatch, validateContact, type ContactErrors, type ContactInput } from "./lead-logic";
+
+type ContactPatch = ReturnType<typeof contactToPatch>;
 
 export function EditContactDialog({
   open,
@@ -24,7 +26,7 @@ export function EditContactDialog({
   open: boolean;
   onOpenChange: (open: boolean) => void;
   lead: Lead;
-  onSave: (values: ContactInput) => void;
+  onSave: (values: ContactPatch) => void;
 }) {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -56,14 +58,14 @@ function EditContactForm({
 }: {
   lead: Lead;
   onCancel: () => void;
-  onSave: (values: ContactInput) => void;
+  onSave: (values: ContactPatch) => void;
 }) {
   const baseId = useId();
   const [values, setValues] = useState<ContactInput>({
     name: lead.name,
-    email: lead.email,
-    phone: lead.phone,
-    company: lead.company,
+    email: lead.email ?? "",
+    phone: lead.phone ?? "",
+    company: lead.company ?? "",
   });
   const [errors, setErrors] = useState<ContactErrors>({});
 
@@ -72,12 +74,7 @@ function EditContactForm({
     const found = validateContact(values);
     setErrors(found);
     if (Object.keys(found).length > 0) return;
-    onSave({
-      name: values.name.trim(),
-      email: values.email.trim(),
-      phone: values.phone.trim(),
-      company: values.company.trim(),
-    });
+    onSave(contactToPatch(values));
   }
 
   return (

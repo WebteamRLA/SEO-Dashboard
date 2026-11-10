@@ -7,7 +7,6 @@ import {
   FileText,
   LayoutDashboard,
   Map,
-  Rocket,
   Settings,
   Users,
   type LucideIcon,
@@ -19,8 +18,8 @@ export interface NavItem {
   href: string;
   /** Shown as a chip for pages not yet delivered. P1 pages carry none. */
   phase?: Phase;
-  /** The topbar month selector applies to this page. */
-  monthScoped?: boolean;
+  /** The topbar date range filter applies to this page. */
+  periodScoped?: boolean;
 }
 
 export interface NavGroup {
@@ -36,19 +35,19 @@ export const NAVIGATION: NavGroup[] = [
     id: "overview",
     label: "Overview",
     icon: LayoutDashboard,
-    items: [{ label: "Overview", href: "/overview", monthScoped: true }],
+    items: [{ label: "Overview", href: "/overview", periodScoped: true }],
   },
   {
     id: "work",
     label: "Work",
     icon: ClipboardList,
-    items: [{ label: "Monthly Work Tracker", href: "/work", monthScoped: true }],
+    items: [{ label: "Monthly Work Tracker", href: "/work", periodScoped: true }],
   },
   {
     id: "roadmap",
-    label: "Roadmap",
+    label: "SEO Roadmap",
     icon: Map,
-    items: [{ label: "Strategy Roadmap", href: "/roadmap", monthScoped: true }],
+    items: [{ label: "Strategy Roadmap", href: "/roadmap", periodScoped: true }],
   },
   {
     id: "leads",
@@ -64,9 +63,9 @@ export const NAVIGATION: NavGroup[] = [
     label: "Traffic & SEO",
     icon: BarChart3,
     items: [
-      { label: "SEO Overview", href: "/traffic-seo", phase: "P2", monthScoped: true },
-      { label: "Search Performance", href: "/traffic-seo/search-performance", phase: "P2", monthScoped: true },
-      { label: "Visitors & Traffic", href: "/traffic-seo/visitors", phase: "P2", monthScoped: true },
+      { label: "SEO Overview", href: "/traffic-seo", phase: "P2", periodScoped: true },
+      { label: "Search Performance", href: "/traffic-seo/search-performance", phase: "P2", periodScoped: true },
+      { label: "Visitors & Traffic", href: "/traffic-seo/visitors", phase: "P2", periodScoped: true },
       { label: "Behavior Analytics", href: "/traffic-seo/behavior", phase: "P3" },
       { label: "Social Analytics", href: "/traffic-seo/social", phase: "P3" },
     ],
@@ -75,7 +74,7 @@ export const NAVIGATION: NavGroup[] = [
     id: "revenue",
     label: "Revenue",
     icon: CircleDollarSign,
-    items: [{ label: "Revenue Overview", href: "/revenue", phase: "P2", monthScoped: true }],
+    items: [{ label: "Revenue Overview", href: "/revenue", phase: "P2", periodScoped: true }],
   },
   {
     id: "site-health",
@@ -103,15 +102,9 @@ export const NAVIGATION: NavGroup[] = [
       { label: "Search Console Agent", href: "/ai-agents/search-console", phase: "P3" },
       { label: "Content Agent", href: "/ai-agents/content", phase: "P3" },
       { label: "Form Test Agent", href: "/ai-agents/form-test", phase: "P3" },
-      { label: "Lead Filter Agent", href: "/ai-agents/lead-filter", phase: "P1" },
+      { label: "Lead Filter Agent", href: "/ai-agents/lead-filter", phase: "P2" },
       { label: "Report Agent", href: "/ai-agents/report", phase: "P3" },
     ],
-  },
-  {
-    id: "delivery",
-    label: "Delivery Roadmap",
-    icon: Rocket,
-    items: [{ label: "Delivery Roadmap", href: "/delivery-roadmap" }],
   },
   {
     id: "settings",
@@ -122,6 +115,7 @@ export const NAVIGATION: NavGroup[] = [
       { label: "Forms Setup", href: "/settings/forms" },
       { label: "Team & Access", href: "/settings/team" },
       { label: "Notifications", href: "/settings/notifications" },
+      { label: "Delivery Roadmap", href: "/settings/delivery-roadmap" },
     ],
   },
 ];

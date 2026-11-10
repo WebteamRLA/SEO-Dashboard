@@ -7,6 +7,7 @@ import { MetricCard, MetricGrid } from "@/components/data/metric-card";
 import { ProgressBar } from "@/components/data/progress-bar";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { computeRoadmapProgress } from "@/lib/domain/progress";
+import { formatMonthSpan, monthsInRange, type DateRange } from "@/lib/date-range";
 import { formatMonth } from "@/lib/format";
 import type { MonthKey, RoadmapItemWithProgress } from "@/lib/types";
 import {
@@ -58,23 +59,22 @@ function CategoryGroups({ items }: { items: RoadmapItemWithProgress[] }) {
 }
 
 export function RoadmapView({
-  month,
+  range,
   months,
   items,
 }: {
-  month: MonthKey;
+  range: DateRange;
   months: MonthKey[];
   items: RoadmapItemWithProgress[];
 }) {
   const [filter, setFilter] = useState<StatusFilter>("all");
 
   const yearly = computeRoadmapProgress(items);
-  const monthly = computeRoadmapProgress(items, month);
-  const monthLabel = formatMonth(month);
-  const thisMonth = filterByStatus(
-    items.filter((item) => item.month === month),
-    filter,
-  );
+  const periodMonths = monthsInRange(range);
+  const periodItems = items.filter((item) => periodMonths.includes(item.month));
+  const monthly = computeRoadmapProgress(periodItems);
+  const periodLabel = formatMonthSpan(periodMonths);
+  const selected = filterByStatus(periodItems, filter);
   const fullYear = groupByMonth(filterByStatus(items, filter), months);
 
   return (
@@ -87,7 +87,7 @@ export function RoadmapView({
           footer={<ProgressBar progress={yearly} label="Yearly strategy progress" />}
         />
         <MetricCard
-          label={`Monthly plan, ${monthLabel}`}
+          label={`Plan progress, ${periodLabel}`}
           value={`${monthly.percent}%`}
           detail={`${monthly.completed} of ${monthly.total} items`}
           footer={<ProgressBar progress={monthly} label="Monthly plan progress" />}
@@ -111,10 +111,10 @@ export function RoadmapView({
         are complete, and shows Not started until tasks are linked.
       </p>
 
-      <Tabs defaultValue="month" className="gap-3">
+      <Tabs defaultValue="period" className="gap-3">
         <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
           <TabsList>
-            <TabsTrigger value="month">This month</TabsTrigger>
+            <TabsTrigger value="period">Selected period</TabsTrigger>
             <TabsTrigger value="year">Full year</TabsTrigger>
           </TabsList>
           <div role="group" aria-label="Filter by status" className="inline-flex gap-1">
@@ -132,17 +132,17 @@ export function RoadmapView({
           </div>
         </div>
 
-        <TabsContent value="month">
+        <TabsContent value="period">
           <section className="rounded-lg border border-border bg-card p-4">
-            <h2 className="mb-3 text-sm font-semibold">{monthLabel}</h2>
-            {thisMonth.length === 0 ? (
+            <h2 className="mb-3 text-sm font-semibold">{periodLabel}</h2>
+            {selected.length === 0 ? (
               <EmptyState
                 icon={ListChecks}
                 title="No roadmap items"
-                description={filter === "all" ? `Nothing is planned for ${monthLabel}.` : "No items match this filter."}
+                description={filter === "all" ? `Nothing is planned for ${periodLabel}.` : "No items match this filter."}
               />
             ) : (
-              <CategoryGroups items={thisMonth} />
+              <CategoryGroups items={selected} />
             )}
           </section>
         </TabsContent>

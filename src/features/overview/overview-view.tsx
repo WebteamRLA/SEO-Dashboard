@@ -1,8 +1,8 @@
 "use client";
 
-import { MonthLink } from "@/components/layout/month-link";
+import { PeriodLink } from "@/components/layout/period-link";
 import { useMemo } from "react";
-import { CheckCircle2, DollarSign, Inbox, Search, Target, Users } from "lucide-react";
+import { ArrowRight, CheckCircle2, DollarSign, Inbox, Search, Target, Users } from "lucide-react";
 import { ChartCard } from "@/components/charts/chart-card";
 import { BarTrendChart, type ChartSeries } from "@/components/charts/charts";
 import { RankedBars } from "@/components/charts/ranked-bars";
@@ -15,9 +15,9 @@ import {
   computeLeadMetrics,
   computeRevenueSummary,
   countLeadsBySource,
-  leadsInMonth,
   STAGE_META,
 } from "@/lib/domain/leads";
+import { isWithin, monthsInRange, type DateRange } from "@/lib/date-range";
 import { toMonthKey } from "@/lib/month";
 import { formatCurrency, formatDate, formatMonthShort, formatNumber } from "@/lib/format";
 import type { MonthKey, Progress, TaskCounts } from "@/lib/types";
@@ -26,12 +26,13 @@ import { buildMonthSummary } from "./summary";
 
 export interface OverviewProps {
   inProgressMonth: MonthKey;
-  month: MonthKey;
-  monthLabel: string;
+  range: DateRange;
+  periodText: string;
   months: MonthKey[];
   taskCounts: TaskCounts;
-  yearlyPlan: Progress;
-  monthlyPlan: Progress;
+  /** Null until the strategy roadmap has a live source. */
+  yearlyPlan: Progress | null;
+  planProgress: Progress | null;
   tasksByMonth: { month: MonthKey; completed: number; open: number }[];
   recentCompleted: {
     id: string;
@@ -41,6 +42,9 @@ export interface OverviewProps {
     completedDate: string | null;
   }[];
 }
+
+const ROADMAP_NOT_CONNECTED =
+  "Not connected yet. Roadmap progress appears once roadmap items are marked in Teamwork.";
 
 const WORK_SERIES: ChartSeries[] = [
   { key: "completed", label: "Completed", slot: 1 },
@@ -58,38 +62,44 @@ function Section({ title, children, className }: { title: string; children: Reac
 }
 
 export function OverviewView({
-  month,
+  range,
   inProgressMonth,
-  monthLabel,
+  periodText,
   months,
   taskCounts,
   yearlyPlan,
-  monthlyPlan,
+  planProgress,
   tasksByMonth,
   recentCompleted,
 }: OverviewProps) {
   const { leads } = useLeads();
 
   const stats = useMemo(() => {
-    const inMonth = leadsInMonth(leads, month);
-    const metrics = computeLeadMetrics(inMonth);
-    const sources = countLeadsBySource(inMonth);
-    const revenue = computeRevenueSummary(inMonth);
-    const recent = inMonth
+    const inPeriod = leads.filter((lead) => isWithin(lead.submittedAt, range));
+    const metrics = computeLeadMetrics(inPeriod);
+    const sources = countLeadsBySource(inPeriod);
+    const revenue = computeRevenueSummary(inPeriod);
+    const recent = inPeriod
       .filter((lead) => lead.stage !== "spam")
-      .sort((a, b) => b.submittedAt.localeCompare(a.submittedAt))
+      .sort((a, b) => (b.submittedAt ?? "").localeCompare(a.submittedAt ?? ""))
       .slice(0, 5);
     const byMonth = months.map((key) => ({
       month: key,
-      leads: computeLeadMetrics(leads.filter((lead) => toMonthKey(lead.submittedAt) === key)).genuine,
+      leads: computeLeadMetrics(
+        leads.filter((lead) => lead.submittedAt !== null && toMonthKey(lead.submittedAt) === key),
+      ).genuine,
     }));
     return { metrics, sources, revenue, recent, byMonth };
-  }, [leads, month, months]);
+  }, [leads, range, months]);
+
+  const periodMonths = useMemo(() => new Set(monthsInRange(range)), [range]);
+  const marked = (key: MonthKey) =>
+    periodMonths.has(key) ? `${formatMonthShort(key)} (in period)` : formatMonthShort(key);
 
   const summary = buildMonthSummary({
-    monthLabel,
+    periodText,
     tasks: taskCounts,
-    monthlyPlan,
+    planProgress,
     leads: stats.metrics,
     sources: stats.sources,
   });
@@ -104,27 +114,24 @@ export function OverviewView({
 
   return (
     <>
-      <MetricGrid className="xl:grid-cols-3 2xl:grid-cols-6">
+      <MetricGrid className="xl:grid-cols-3 2xl:grid-cols-5">
         <MetricCard
           label="Completed tasks"
           value={formatNumber(taskCounts.completed)}
-          detail={`of ${formatNumber(taskCounts.total)} this month`}
+          detail={`of ${formatNumber(taskCounts.total)} in this period`}
           icon={CheckCircle2}
         />
-        <MetricCard
-          label="Yearly strategy progress"
-          value={`${yearlyPlan.percent}%`}
-          detail={`${yearlyPlan.completed} of ${yearlyPlan.total} items complete`}
-          icon={Target}
-          footer={<ProgressBar progress={yearlyPlan} label="Yearly strategy progress" />}
-        />
-        <MetricCard
-          label="Monthly plan progress"
-          value={`${monthlyPlan.percent}%`}
-          detail={`${monthlyPlan.completed} of ${monthlyPlan.total} items complete`}
-          icon={Target}
-          footer={<ProgressBar progress={monthlyPlan} label="Monthly plan progress" />}
-        />
+        {planProgress ? (
+          <MetricCard
+            label="Plan progress"
+            value={`${planProgress.percent}%`}
+            detail={`${planProgress.completed} of ${planProgress.total} roadmap items complete in this period`}
+            icon={Target}
+            footer={<ProgressBar progress={planProgress} label="Plan progress" />}
+          />
+        ) : (
+          <MetricCard label="Plan progress" value="—" detail={ROADMAP_NOT_CONNECTED} icon={Target} />
+        )}
         <MetricCard
           label="Total leads (excl. spam)"
           value={formatNumber(stats.metrics.genuine)}
@@ -140,18 +147,43 @@ export function OverviewView({
         <MetricCard
           label="Won revenue"
           value={formatCurrency(stats.metrics.wonRevenue)}
-          detail={`${formatNumber(stats.metrics.won)} won ${stats.metrics.won === 1 ? "deal" : "deals"}, from this month's leads`}
+          detail={`${formatNumber(stats.metrics.won)} won ${stats.metrics.won === 1 ? "deal" : "deals"}, from leads in this period`}
           icon={DollarSign}
         />
       </MetricGrid>
 
-      <Section title={`Performance summary, ${monthLabel}`}>
-        <ul className="flex list-disc flex-col gap-1 pl-4 text-sm text-muted-foreground marker:text-border">
-          {summary.map((line) => (
-            <li key={line}>{line}</li>
-          ))}
-        </ul>
-      </Section>
+      <div className="grid gap-5 lg:grid-cols-3">
+        <Section title={`Performance summary, ${periodText}`} className="lg:col-span-2">
+          <ul className="flex list-disc flex-col gap-1 pl-4 text-sm text-muted-foreground marker:text-border">
+            {summary.map((line) => (
+              <li key={line}>{line}</li>
+            ))}
+          </ul>
+        </Section>
+        <Section title="Yearly strategy progress">
+          {yearlyPlan ? (
+            <>
+              <div className="flex items-baseline justify-between gap-2">
+                <p className="text-2xl font-semibold tracking-tight tabular-nums">{yearlyPlan.percent}%</p>
+                <p className="text-xs text-muted-foreground">
+                  {formatNumber(yearlyPlan.completed)} of {formatNumber(yearlyPlan.total)} items complete
+                </p>
+              </div>
+              <ProgressBar progress={yearlyPlan} label="Yearly strategy progress" />
+              <p className="text-xs text-muted-foreground">The whole year&apos;s plan, not only the selected period.</p>
+            </>
+          ) : (
+            <p className="text-sm text-muted-foreground">{ROADMAP_NOT_CONNECTED}</p>
+          )}
+          <PeriodLink
+            href="/roadmap"
+            className="mt-auto inline-flex items-center gap-1 self-start text-sm font-medium text-primary hover:underline focus-visible:underline"
+          >
+            View SEO Roadmap
+            <ArrowRight className="size-3.5" aria-hidden />
+          </PeriodLink>
+        </Section>
+      </div>
 
       <div className="grid gap-5 lg:grid-cols-2">
         <ChartCard
@@ -162,7 +194,7 @@ export function OverviewView({
             rows: tasksByMonth.map((row) => ({
               key: row.month,
               cells: [
-                row.month === month ? `${formatMonthShort(row.month)} (selected)` : formatMonthShort(row.month),
+                marked(row.month),
                 formatNumber(row.completed),
                 formatNumber(row.open),
               ],
@@ -179,7 +211,7 @@ export function OverviewView({
             rows: leadsByMonth.map((row) => ({
               key: row.month,
               cells: [
-                row.month === month ? `${formatMonthShort(row.month)} (selected)` : formatMonthShort(row.month),
+                marked(row.month),
                 formatNumber(row.leads),
               ],
             })),
@@ -192,7 +224,7 @@ export function OverviewView({
       <div className="grid gap-5 lg:grid-cols-3">
         <ChartCard
           title="Lead source distribution"
-          description={`${monthLabel}, spam excluded`}
+          description={`${periodText}, spam excluded`}
           className="lg:col-span-2"
           table={{
             columns: ["Source", "Leads"],
@@ -200,7 +232,7 @@ export function OverviewView({
           }}
         >
           {stats.sources.length === 0 ? (
-            <EmptyState icon={Inbox} title="No leads this month" />
+            <EmptyState icon={Inbox} title="No leads in this period" />
           ) : (
             <RankedBars
               label="Leads by source"
@@ -229,18 +261,18 @@ export function OverviewView({
       <div className="grid gap-5 lg:grid-cols-2">
         <Section title="Recent leads">
           {stats.recent.length === 0 ? (
-            <EmptyState icon={Inbox} title="No leads this month" />
+            <EmptyState icon={Inbox} title="No leads in this period" />
           ) : (
             <ul className="divide-y divide-border">
               {stats.recent.map((lead) => (
                 <li key={lead.id} className="flex items-center justify-between gap-3 py-2 first:pt-0 last:pb-0">
                   <div className="min-w-0">
-                    <MonthLink
+                    <PeriodLink
                       href={`/leads/${lead.id}`}
                       className="block truncate text-sm font-medium hover:underline focus-visible:underline"
                     >
                       {lead.name}
-                    </MonthLink>
+                    </PeriodLink>
                     <p className="truncate text-xs text-muted-foreground">
                       {lead.attribution.source} · {formatDate(lead.submittedAt)}
                     </p>
@@ -253,7 +285,7 @@ export function OverviewView({
         </Section>
         <Section title="Recent completed tasks">
           {recentCompleted.length === 0 ? (
-            <EmptyState icon={CheckCircle2} title="No completed tasks this month" />
+            <EmptyState icon={CheckCircle2} title="No completed tasks in this period" />
           ) : (
             <ul className="divide-y divide-border">
               {recentCompleted.map((task) => (

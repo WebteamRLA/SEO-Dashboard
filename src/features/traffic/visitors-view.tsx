@@ -6,33 +6,35 @@ import { BarTrendChart, type ChartSeries } from "@/components/charts/charts";
 import { RankedBars } from "@/components/charts/ranked-bars";
 import { EmptyState } from "@/components/data/empty-state";
 import { MetricCard, MetricGrid } from "@/components/data/metric-card";
-import { formatMonthShort, formatNumber } from "@/lib/format";
+import { formatNumber } from "@/lib/format";
+import { monthsInRange, previousRange, type DateRange } from "@/lib/date-range";
 import type { MonthKey, TrafficChannel, TrafficMetrics } from "@/lib/types";
 import { completeMonths } from "@/lib/month";
-import { COMPLETE_MONTHS_NOTE, describeChange, findPrior, toChartData, toMonthTable } from "./trend";
+import { aggregateTraffic, PRIOR_LABEL, roundingNote } from "./aggregate";
+import { COMPLETE_MONTHS_NOTE, describeChange, toChartData, toMonthTable } from "./trend";
 
 const SESSIONS: ChartSeries[] = [{ key: "sessions", label: "Sessions", slot: 1 }];
 
 export function VisitorsView({
-  month,
-  monthLabel,
+  range,
+  periodText,
   inProgressMonth,
   traffic,
   channels,
 }: {
-  month: MonthKey;
-  monthLabel: string;
+  range: DateRange;
+  periodText: string;
   inProgressMonth: MonthKey;
   traffic: TrafficMetrics[];
   channels: TrafficChannel[];
 }) {
-  const partial = month === inProgressMonth;
+  const months = monthsInRange(range);
+  const partial = months.includes(inProgressMonth);
   const trend = completeMonths(traffic, inProgressMonth);
-  const current = traffic.find((row) => row.month === month);
-  const prior = findPrior(traffic, month);
-  const priorLabel = prior ? formatMonthShort(prior.month) : "";
+  const current = aggregateTraffic(traffic, months);
+  const prior = aggregateTraffic(traffic, monthsInRange(previousRange(range)));
   const detail = (value: number | undefined, previous: number | undefined) =>
-    partial ? "Month in progress" : value === undefined ? undefined : describeChange("percent", value, previous, priorLabel);
+    partial ? "Includes the current month" : value === undefined ? undefined : describeChange("percent", value, previous, PRIOR_LABEL);
 
   const channelRows = [...channels]
     .sort((a, b) => b.sessions - a.sessions)
@@ -56,8 +58,9 @@ export function VisitorsView({
           />
         </MetricGrid>
       ) : (
-        <EmptyState icon={Users} title={`No traffic data for ${monthLabel}`} />
+        <EmptyState icon={Users} title={`No traffic data for ${periodText}`} />
       )}
+      <p className="text-xs text-muted-foreground">{roundingNote(months)}</p>
 
       <ChartCard
         title="Sessions by month"
@@ -69,7 +72,7 @@ export function VisitorsView({
 
       <ChartCard
         title="Traffic channels"
-        description="Sample channel split. It does not change with the selected month."
+        description="Sample channel split. It does not change with the selected period."
         table={{
           columns: ["Channel", "Sessions"],
           rows: channelRows.map((row) => ({ key: row.label, cells: [row.label, row.display] })),

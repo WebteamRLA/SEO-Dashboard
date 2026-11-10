@@ -45,9 +45,8 @@ src/
 | Revenue | `/revenue` | P2 |
 | Site Health | `/site-health/forms`, `/site-health/broken-links`, `/site-health/issues` | P2 |
 | Reports | `/reports` | P2 |
-| AI Agents | `/ai-agents`, `/ai-agents/[slug]` | P3, except the Lead Filter Agent (P1) |
-| Delivery Roadmap | `/delivery-roadmap` | P1 |
-| Settings | `/settings/integrations`, `/settings/forms`, `/settings/team`, `/settings/notifications` | P1 |
+| AI Agents | `/ai-agents`, `/ai-agents/[slug]` | P3, except the Lead Filter Agent (P2) |
+| Settings | `/settings/integrations`, `/settings/forms`, `/settings/team`, `/settings/notifications`, `/settings/delivery-roadmap` | P1 |
 
 ## Data flow
 
@@ -65,14 +64,18 @@ mocks/ -> lib/data/ (async, server-only) -> Server Component page -> features/ c
   move to a real backend. Roadmap status is derived from linked tasks, so the roadmap can never
   disagree with the work tracker.
 
-## Global month filter
+## Reporting period
 
-The month lives in the URL as `?month=YYYY-MM`, so a view can be shared and the server can read it.
-Pages call `resolveMonth(searchParams.month)`, which rejects anything that is not a known month. The
-topbar selector appears on routes marked `monthScoped` in `config/navigation.ts`.
+The period lives in the URL so a view can be shared and the server can read it: a preset by name
+(`?range=this-month`, so a bookmark stays current) or custom dates (`?from=2026-10-03&to=2026-11-10`).
+Older `?month=YYYY-MM` links still work and mean that whole month. Pages call
+`resolvePagePeriod(searchParams)`, which validates the untrusted input and falls back to This month.
+All logic is in `src/lib/date-range.ts`; dates are UTC calendar dates and ranges include both ends.
 
-Use `MonthLink` (or `useMonthHref`), not `next/link`, for links between dashboard pages. One plain link
-would silently reset the selected month for the rest of the session.
+The topbar `DateRangeFilter` appears on routes marked `periodScoped` in `config/navigation.ts`. Use
+`PeriodLink` (or `usePeriodHref`), not `next/link`, for links between dashboard pages, so the period is
+kept. Leads count by submission date, tasks by completion date (open tasks by due date), and monthly
+data, such as roadmap items and the sample traffic figures, by the months the period touches.
 
 ## Lead state
 
@@ -81,9 +84,29 @@ in the inbox, lead details, Overview, Revenue, and Reports. Any page showing lea
 `useLeads()` rather than server props. Changes last until the page reloads, and the lead pages say so. Step 2 swaps the store internals for Server
 Actions; consumers of `useLeads()` do not change.
 
+## Authentication
+
+Google sign-in through Better Auth, with sessions in Postgres. There are no passwords.
+
+- **Invite-only.** A Google account may sign in only if its email is verified by Google and it is in
+  `access_invite` or `AUTH_BOOTSTRAP_ADMINS`. The rules are in `src/server/auth/access.ts` and
+  `hooks.ts`, and run on every sign-in, so removing an invite blocks the next sign-in. An existing
+  session lasts until it expires (7 days) unless it is deleted.
+- **Roles** are `admin`, `manager`, and `member`, taken from the invite on each sign-in.
+- **Protection.** `(dashboard)/layout.tsx` calls `requireSessionUser()` before loading any data, so an
+  anonymous request gets a redirect to `/login`. New server actions and API routes must check the
+  session themselves: the layout does not protect them.
+- **Fails closed.** Without the sign-in variables, `getSessionUser()` returns null, so every page sends
+  people to a login page that says sign-in is not set up.
+- **Request forgery.** Better Auth refuses cross-site requests that carry a session cookie, and any
+  `callbackURL` outside `BETTER_AUTH_URL`.
+- Invites are not yet managed in the UI: add a row to `access_invite`. Leads remain sample data,
+  attributed to the sample team, not to the signed-in user.
+
 ## Honesty rules for sample data
 
-- The topbar shows a **Sample data** chip. Phones, where it does not fit, get a banner instead.
+- There is no global sample-data marker any more. Pages still showing sample data say so where it
+  matters: P2 and P3 pages carry a phase badge and a `PreviewNotice`.
 - P2 and P3 pages carry a phase badge and a `PreviewNotice`.
 - Delivery dates stay "To be confirmed" until a date is actually confirmed. `plannedDate` is `null`.
 - Sample people use fictional names and reserved `.example` domains. Sample phone numbers use the

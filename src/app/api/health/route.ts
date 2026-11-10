@@ -1,5 +1,5 @@
 import type { PrismaClient } from "@/generated/prisma/client";
-import { createDb } from "@/server/db/client";
+import { createDb, releaseDb } from "@/server/db/client";
 
 const NO_STORE = { "cache-control": "no-store" };
 
@@ -16,6 +16,6 @@ export async function GET() {
     console.error("Health check failed", error);
     return Response.json({ status: "unavailable" }, { status: 503, headers: NO_STORE });
   } finally {
-    await db?.$disconnect();
+    if (db) await releaseDb(db);
   }
 }

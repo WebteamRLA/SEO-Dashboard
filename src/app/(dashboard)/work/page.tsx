@@ -2,20 +2,25 @@ import type { Metadata } from "next";
 import { Info } from "lucide-react";
 import { PageBody, PageHeader } from "@/components/layout/page-header";
 import { WorkTracker } from "@/features/work/work-tracker";
-import { resolveMonth } from "@/lib/data/calendar";
+import { resolvePagePeriod } from "@/lib/data/calendar";
+import { describePeriod } from "@/lib/date-range";
 import { getWorkTrackerData } from "@/lib/data/work";
-import { countTasks, countTasksByCategory } from "@/lib/domain/progress";
-import { formatMonth } from "@/lib/format";
+import { countTasks, countTasksByCategory, taskInPeriod } from "@/lib/domain/progress";
 
 export const metadata: Metadata = { title: "Monthly Work Tracker" };
 
 export default async function WorkPage({
   searchParams,
 }: {
-  searchParams: Promise<{ month?: string | string[] }>;
+  searchParams: Promise<{
+    range?: string | string[];
+    from?: string | string[];
+    to?: string | string[];
+    month?: string | string[];
+  }>;
 }) {
-  const month = await resolveMonth((await searchParams).month);
-  const monthLabel = formatMonth(month);
+  const period = await resolvePagePeriod(await searchParams);
+  const periodText = describePeriod(period);
 
   let data: Awaited<ReturnType<typeof getWorkTrackerData>>;
   try {
@@ -25,7 +30,7 @@ export default async function WorkPage({
     const message = error instanceof Error ? error.message : "Could not load Teamwork data.";
     return (
       <PageBody>
-        <PageHeader title="Monthly Work Tracker" description={`Showing ${monthLabel}`} />
+        <PageHeader title="Monthly Work Tracker" description={`Live from Teamwork · ${periodText}`} />
         <div className="flex items-start gap-2.5 rounded-lg border border-border bg-card px-3.5 py-3 text-sm">
           <Info className="mt-0.5 size-4 shrink-0 text-status-warning" aria-hidden />
           <p className="text-muted-foreground">
@@ -37,8 +42,8 @@ export default async function WorkPage({
     );
   }
 
-  const monthTasks = data.tasks.filter((task) => task.month === month);
-  const rows = monthTasks.map((task) => ({
+  const periodTasks = data.tasks.filter((task) => taskInPeriod(task, period.range));
+  const rows = periodTasks.map((task) => ({
     ...task,
     assigneeName: data.people[task.assigneeId] ?? "Unassigned",
   }));
@@ -47,14 +52,14 @@ export default async function WorkPage({
     <PageBody>
       <PageHeader
         title="Monthly Work Tracker"
-        description={`Live from Teamwork · Showing ${monthLabel}`}
+        description={`Live from Teamwork · ${periodText}`}
       />
       <WorkTracker
-        key={month}
-        monthLabel={monthLabel}
+        key={`${period.range.from}_${period.range.to}`}
+        periodText={periodText}
         rows={rows}
-        counts={countTasks(monthTasks)}
-        byCategory={countTasksByCategory(monthTasks)}
+        counts={countTasks(periodTasks)}
+        byCategory={countTasksByCategory(periodTasks)}
       />
     </PageBody>
   );

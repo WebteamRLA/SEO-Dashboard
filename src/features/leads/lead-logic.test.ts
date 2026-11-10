@@ -1,9 +1,10 @@
 import { describe, expect, it } from "vitest";
 import type { Lead } from "@/lib/types";
-import { filterLeads, groupByStage, parseDealValue, validateContact } from "./lead-logic";
+import { contactToPatch, filterLeads, groupByStage, parseDealValue, validateContact } from "./lead-logic";
 
 function lead(overrides: Partial<Lead> & { id: string }): Lead {
   return {
+    origin: "website-form",
     name: "Test Person",
     email: "test@example.com",
     phone: "",
@@ -12,9 +13,12 @@ function lead(overrides: Partial<Lead> & { id: string }): Lead {
     formName: "Contact Form",
     pageUrl: "/contact",
     submittedAt: "2026-11-05T10:00:00Z",
-    attribution: { source: "Direct", medium: "none", campaign: null, landingPage: "/", referrer: null },
+    attribution: { source: "Direct", heardFrom: null, medium: "none", campaign: null, landingPage: "/", referrer: null },
     stage: "new",
     dealValue: null,
+    pipelineNote: null,
+    wonOn: null,
+    payments: [],
     assigneeId: null,
     spamFilteredBy: null,
     notes: [],
@@ -85,6 +89,19 @@ describe("validateContact", () => {
   it("flags empty name and bad email", () => {
     expect(validateContact({ ...ok, name: "  " }).name).toBeDefined();
     expect(validateContact({ ...ok, email: "nope" }).email).toBeDefined();
-    expect(validateContact({ ...ok, email: "" }).email).toBeDefined();
+  });
+  it("allows a blank email, since older leads have none", () => {
+    expect(validateContact({ ...ok, email: "  " })).toEqual({});
+  });
+});
+
+describe("contactToPatch", () => {
+  it("trims values and turns blank optional fields into null", () => {
+    expect(contactToPatch({ name: " A ", email: "", phone: " ", company: "Acme " })).toEqual({
+      name: "A",
+      email: null,
+      phone: null,
+      company: "Acme",
+    });
   });
 });

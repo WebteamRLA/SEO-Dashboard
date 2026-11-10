@@ -18,6 +18,7 @@ const context = { actorId: "courtney", now: "2026-11-06T10:00:00Z", eventId: "1"
 function lead(overrides: Partial<Lead> = {}): Lead {
   return {
     id: "lead-1",
+    origin: "website-form",
     name: "Ada Lane",
     email: "ada@acme.example",
     phone: "(202) 555-0100",
@@ -28,6 +29,7 @@ function lead(overrides: Partial<Lead> = {}): Lead {
     submittedAt: "2026-10-05T09:00:00Z",
     attribution: {
       source: "Organic Search",
+      heardFrom: null,
       medium: "organic",
       campaign: null,
       landingPage: "/seo",
@@ -35,6 +37,9 @@ function lead(overrides: Partial<Lead> = {}): Lead {
     },
     stage: "new",
     dealValue: null,
+    pipelineNote: null,
+    wonOn: null,
+    payments: [],
     assigneeId: null,
     spamFilteredBy: null,
     notes: [],
@@ -64,7 +69,7 @@ describe("computeLeadMetrics", () => {
 
 describe("leadsInMonth", () => {
   it("matches on the submission month", () => {
-    const leads = [lead(), lead({ submittedAt: "2026-11-01T00:00:00Z" })];
+    const leads = [lead(), lead({ submittedAt: "2026-11-01T12:00:00Z" })];
     expect(leadsInMonth(leads, "2026-10")).toHaveLength(1);
   });
 });

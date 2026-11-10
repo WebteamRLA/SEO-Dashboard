@@ -17,3 +17,142 @@ model ApplicationSetting {
 
   @@map("application_setting")
 }
+
+// ---------------------------------------------------------------------------
+// Authentication (Better Auth, Google sign-in only). Field names follow Better
+// Auth's schema; columns are snake_case.
+// ---------------------------------------------------------------------------
+
+model User {
+  id            String    @id
+  name          String
+  email         String    @unique
+  emailVerified Boolean   @default(false) @map("email_verified")
+  image         String?
+  /// "admin" | "manager" | "member". Set from the invite on every sign-in.
+  role          String    @default("member")
+  createdAt     DateTime  @default(now()) @map("created_at")
+  updatedAt     DateTime  @updatedAt @map("updated_at")
+  sessions      Session[]
+  accounts      Account[]
+
+  @@map("user")
+}
+
+model Session {
+  id        String   @id
+  token     String   @unique
+  expiresAt DateTime @map("expires_at")
+  ipAddress String?  @map("ip_address")
+  userAgent String?  @map("user_agent")
+  userId    String   @map("user_id")
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@index([userId])
+  @@map("session")
+}
+
+model Account {
+  id                    String    @id
+  accountId             String    @map("account_id")
+  providerId            String    @map("provider_id")
+  userId                String    @map("user_id")
+  user                  User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  accessToken           String?   @map("access_token")
+  refreshToken          String?   @map("refresh_token")
+  idToken               String?   @map("id_token")
+  accessTokenExpiresAt  DateTime? @map("access_token_expires_at")
+  refreshTokenExpiresAt DateTime? @map("refresh_token_expires_at")
+  scope                 String?
+  password              String?
+  createdAt             DateTime  @default(now()) @map("created_at")
+  updatedAt             DateTime  @updatedAt @map("updated_at")
+
+  @@index([userId])
+  @@map("account")
+}
+
+model Verification {
+  id         String   @id
+  identifier String
+  value      String
+  expiresAt  DateTime @map("expires_at")
+  createdAt  DateTime @default(now()) @map("created_at")
+  updatedAt  DateTime @updatedAt @map("updated_at")
+
+  @@index([identifier])
+  @@map("verification")
+}
+
+/// Who may sign in, and with which role. Sign-in is invite-only: a Google
+/// account must match an invite here (or AUTH_BOOTSTRAP_ADMINS).
+model AccessInvite {
+  /// Stored lower-case.
+  email     String   @id
+  role      String   @default("member")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@map("access_invite")
+}
+
+// ---------------------------------------------------------------------------
+// Leads. Imported from Courtney's Google Sheet for now; website forms add to
+// the same table later. Fields the sheet owns are overwritten on every import;
+// fields only the dashboard edits are never touched by an import.
+// ---------------------------------------------------------------------------
+
+model Lead {
+  id            String        @id
+  /// "sheet" | "website-form" | "manual"
+  origin        String
+  /// When the enquiry arrived. Null when the sheet row has no date.
+  submittedAt   DateTime?     @map("submitted_at")
+  name          String?
+  email         String?
+  company       String?
+  /// How the person says they found RLA, in their words ("ChatGPT", "LinkedIn").
+  heardFrom     String?       @map("heard_from")
+  /// The channel as RLA classifies it: Organic Search, AI Search, Referral,
+  /// Paid Search, Social, Direct, Email, or Unknown.
+  channel       String        @default("Unknown")
+  budget        String?
+  services      String?
+  message       String?
+  /// "new" | "contacted" | "meeting" | "proposal" | "won" | "lost" | "spam"
+  stage         String        @default("new")
+  /// The sheet's "Notes/Lost Reason" cell, verbatim.
+  pipelineNote  String?       @map("pipeline_note")
+  /// The sheet's "Close Date". Revenue is reported by this date.
+  wonOn         DateTime?     @map("won_on") @db.Date
+  /// Identifies the sheet row so a re-import updates instead of duplicating.
+  sheetRowKey   String?       @unique @map("sheet_row_key")
+  /// The row's original cells, kept so values can be re-mapped without re-importing.
+  sheetRow      Json?         @map("sheet_row")
+  sheetSyncedAt DateTime?     @map("sheet_synced_at")
+  payments      LeadPayment[]
+  createdAt     DateTime      @default(now()) @map("created_at")
+  updatedAt     DateTime      @updatedAt @map("updated_at")
+
+  @@index([submittedAt])
+  @@index([stage])
+  @@map("lead")
+}
+
+/// Money received for a won lead, in USD. Sequence 1 is the sheet's
+/// "Revenue Month 1", 2 is "Revenue Month 2".
+model LeadPayment {
+  id         String   @id
+  leadId     String   @map("lead_id")
+  lead       Lead     @relation(fields: [leadId], references: [id], onDelete: Cascade)
+  sequence   Int
+  amount     Decimal  @db.Decimal(12, 2)
+  commission Decimal? @db.Decimal(12, 2)
+  createdAt  DateTime @default(now()) @map("created_at")
+  updatedAt  DateTime @updatedAt @map("updated_at")
+
+  @@unique([leadId, sequence])
+  @@map("lead_payment")
+}

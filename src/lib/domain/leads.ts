@@ -31,7 +31,7 @@ export const SPAM_TAG_LABEL = {
 } as const;
 
 export function leadsInMonth(leads: readonly Lead[], month: MonthKey): Lead[] {
-  return leads.filter((lead) => toMonthKey(lead.submittedAt) === month);
+  return leads.filter((lead) => lead.submittedAt !== null && toMonthKey(lead.submittedAt) === month);
 }
 
 /** Won deals with a recorded value. A won lead with no value counts as $0. */

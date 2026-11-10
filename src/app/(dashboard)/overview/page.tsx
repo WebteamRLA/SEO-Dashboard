@@ -1,38 +1,48 @@
 import type { Metadata } from "next";
+import { Info } from "lucide-react";
 import { PageBody, PageHeader } from "@/components/layout/page-header";
 import { OverviewView } from "@/features/overview/overview-view";
-import { getAvailableMonths, getReferenceDate, resolveMonth } from "@/lib/data/calendar";
-import { getTeamMembers } from "@/lib/data/team";
-import { getRoadmap, getTasks } from "@/lib/data/work";
-import { computeRoadmapProgress, countTasks } from "@/lib/domain/progress";
-import { formatMonth } from "@/lib/format";
+import { getAvailableMonths, getToday, resolvePagePeriod } from "@/lib/data/calendar";
+import { getWorkTrackerData, type WorkTrackerData } from "@/lib/data/work";
+import { describePeriod } from "@/lib/date-range";
+import { countTasks, taskInPeriod } from "@/lib/domain/progress";
 import { toMonthKey } from "@/lib/month";
 
+
 export const metadata: Metadata = { title: "Overview" };
+
+/** Live Teamwork tasks. An outage empties the task panels instead of failing the page. */
+async function loadWork(): Promise<WorkTrackerData & { error: string | null }> {
+  try {
+    return { ...(await getWorkTrackerData()), error: null };
+  } catch (error) {
+    return { tasks: [], people: {}, error: error instanceof Error ? error.message : "Could not load Teamwork data." };
+  }
+}
 
 export default async function OverviewPage({
   searchParams,
 }: {
-  searchParams: Promise<{ month?: string | string[] }>;
+  searchParams: Promise<{
+    range?: string | string[];
+    from?: string | string[];
+    to?: string | string[];
+    month?: string | string[];
+  }>;
 }) {
-  const month = await resolveMonth((await searchParams).month);
-  const [tasks, roadmap, team, activeMonths, today] = await Promise.all([
-    getTasks(),
-    getRoadmap(),
-    getTeamMembers(),
-    getAvailableMonths(),
-    getReferenceDate(),
-  ]);
+  const period = await resolvePagePeriod(await searchParams);
+  const { range } = period;
+  const [work, activeMonths, today] = await Promise.all([loadWork(), getAvailableMonths(), getToday()]);
+  const { tasks, people } = work;
 
-  const names = new Map(team.map((member) => [member.id, member.name]));
-  const monthTasks = tasks.filter((task) => task.month === month);
+  const periodTasks = tasks.filter((task) => taskInPeriod(task, range));
 
   const tasksByMonth = activeMonths.map((key) => {
     const counts = countTasks(tasks.filter((task) => task.month === key));
     return { month: key, completed: counts.completed, open: counts.todo + counts.inProgress };
   });
 
-  const recentCompleted = monthTasks
+  const recentCompleted = periodTasks
     .filter((task) => task.status === "completed")
     .sort((a, b) => (b.completedDate ?? "").localeCompare(a.completedDate ?? ""))
     .slice(0, 5)
@@ -40,24 +50,33 @@ export default async function OverviewPage({
       id: task.id,
       name: task.name,
       category: task.category,
-      assignee: names.get(task.assigneeId) ?? "Unassigned",
+      assignee: people[task.assigneeId] ?? "Unassigned",
       completedDate: task.completedDate,
     }));
 
-  const monthLabel = formatMonth(month);
 
   return (
     <PageBody>
-      <PageHeader title="Overview" description={`Showing ${monthLabel}`} />
+      <PageHeader title="Overview" description={describePeriod(period)} />
+      {work.error ? (
+        <div className="flex items-start gap-2.5 rounded-lg border border-border bg-card px-3.5 py-3 text-sm">
+          <Info className="mt-0.5 size-4 shrink-0 text-status-warning" aria-hidden />
+          <p className="text-muted-foreground">
+            <span className="font-medium text-foreground">Teamwork is not available right now, so task figures are empty.</span>{" "}
+            {work.error}
+          </p>
+        </div>
+      ) : null}
         <OverviewView
-          key={month}
-          month={month}
-          monthLabel={monthLabel}
+          key={`${range.from}_${range.to}`}
+          range={range}
+          periodText={describePeriod(period)}
           months={activeMonths}
           inProgressMonth={toMonthKey(today)}
-          taskCounts={countTasks(monthTasks)}
-          yearlyPlan={computeRoadmapProgress(roadmap)}
-          monthlyPlan={computeRoadmapProgress(roadmap, month)}
+          taskCounts={countTasks(periodTasks)}
+          // No live roadmap source yet: how Teamwork marks roadmap items is undecided.
+          yearlyPlan={null}
+          planProgress={null}
           tasksByMonth={tasksByMonth}
           recentCompleted={recentCompleted}
         />

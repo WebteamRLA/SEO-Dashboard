@@ -5,6 +5,7 @@ import {
   countTasks,
   countTasksByCategory,
   resolveRoadmap,
+  taskInPeriod,
   toProgress,
 } from "./progress";
 
@@ -95,5 +96,23 @@ describe("computeRoadmapProgress", () => {
   it("scopes to a single month", () => {
     expect(computeRoadmapProgress(items, "2026-10")).toMatchObject({ completed: 1, total: 2 });
     expect(computeRoadmapProgress(items, "2026-11")).toMatchObject({ completed: 0, total: 1 });
+  });
+});
+
+describe("taskInPeriod", () => {
+  const range = { from: "2026-11-01", to: "2026-11-10" };
+
+  it("counts a completed task by its completion date", () => {
+    expect(taskInPeriod(task("a", "completed", { completedDate: "2026-11-10", dueDate: "2026-10-01" }), range)).toBe(true);
+    expect(taskInPeriod(task("b", "completed", { completedDate: "2026-10-31", dueDate: "2026-11-05" }), range)).toBe(false);
+  });
+
+  it("counts an open task by its due date", () => {
+    expect(taskInPeriod(task("c", "todo", { dueDate: "2026-11-01" }), range)).toBe(true);
+    expect(taskInPeriod(task("d", "in-progress", { dueDate: "2026-11-11" }), range)).toBe(false);
+  });
+
+  it("never counts a completed task without a completion date", () => {
+    expect(taskInPeriod(task("e", "completed", { completedDate: null, dueDate: "2026-11-05" }), range)).toBe(false);
   });
 });

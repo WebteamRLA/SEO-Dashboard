@@ -1,5 +1,4 @@
 import type { Metadata } from "next";
-import { PageBody, PageHeader } from "@/components/layout/page-header";
 import { DeliveryRoadmap, type PhaseSection } from "@/features/delivery/delivery-roadmap";
 import { phaseProgress } from "@/lib/domain/delivery";
 import { getDeliveryModules } from "@/lib/data/operations";
@@ -13,6 +12,7 @@ const PHASE_SECTIONS: readonly { phase: Phase; title: string }[] = [
   { phase: "P3", title: "Phase 3" },
 ];
 
+/** Rendered inside the Settings layout, which provides the page title and section tabs. */
 export default async function DeliveryRoadmapPage() {
   const modules = await getDeliveryModules();
   const sections: PhaseSection[] = PHASE_SECTIONS.map(({ phase, title }) => ({
@@ -23,12 +23,12 @@ export default async function DeliveryRoadmapPage() {
   }));
 
   return (
-    <PageBody>
-      <PageHeader
-        title="Delivery Roadmap"
-        description="Progress is the share of each module's delivery steps that are finished. Planned dates stay “To be confirmed” until they are confirmed."
-      />
+    <>
+      <p className="text-sm text-muted-foreground">
+        Progress is the share of each module&apos;s delivery steps that are finished. Planned dates stay
+        “To be confirmed” until they are confirmed.
+      </p>
       <DeliveryRoadmap sections={sections} />
-    </PageBody>
+    </>
   );
 }

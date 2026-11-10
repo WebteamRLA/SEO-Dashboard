@@ -1,6 +1,7 @@
 import "server-only";
-import { ACTIVE_MONTHS, DEFAULT_MONTH, REFERENCE_DATE, STRATEGY_MONTHS } from "@/mocks/calendar";
-import { pickMonth } from "@/lib/month";
+import { ACTIVE_MONTHS, STRATEGY_MONTHS } from "@/mocks/calendar";
+import { resolvePeriod, type Period } from "@/lib/date-range";
+import { instantDay } from "@/lib/format";
 import type { ISODate, MonthKey } from "@/lib/types";
 
 export async function getAvailableMonths(): Promise<MonthKey[]> {
@@ -11,16 +12,24 @@ export async function getStrategyMonths(): Promise<MonthKey[]> {
   return STRATEGY_MONTHS;
 }
 
-export async function getDefaultMonth(): Promise<MonthKey> {
-  return DEFAULT_MONTH;
+
+/**
+ * Today in the reporting time zone, from the real clock. Reporting periods are
+ * relative to it, and isWithin() puts timestamps on the same zone's days, so the
+ * two agree around midnight.
+ */
+export async function getToday(): Promise<ISODate> {
+  return instantDay(new Date().toISOString());
 }
 
-/** "Today" for relative filters. Becomes the real clock with live data. */
-export async function getReferenceDate(): Promise<ISODate> {
-  return REFERENCE_DATE;
+
+/** The reporting period from a page's search parameters. Untrusted input is validated. */
+export async function resolvePagePeriod(params: {
+  range?: string | string[];
+  from?: string | string[];
+  to?: string | string[];
+  month?: string | string[];
+}): Promise<Period> {
+  return resolvePeriod(params, await getToday());
 }
 
-/** Validates a page's `?month=` search parameter. */
-export async function resolveMonth(raw: string | string[] | undefined): Promise<MonthKey> {
-  return pickMonth(raw, ACTIVE_MONTHS, DEFAULT_MONTH);
-}

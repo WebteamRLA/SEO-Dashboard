@@ -44,12 +44,12 @@ export function WorkTracker({
   rows,
   counts,
   byCategory,
-  monthLabel,
+  periodText,
 }: {
   rows: TaskRow[];
   counts: TaskCounts;
   byCategory: CategoryCount[];
-  monthLabel: string;
+  periodText: string;
 }) {
   const [query, setQuery] = useState("");
   const [status, setStatus] = useState(ALL);
@@ -94,15 +94,15 @@ export function WorkTracker({
       </FilterBar>
 
       <DataTable
-        caption={`SEO tasks for ${monthLabel}`}
+        caption={`SEO tasks, ${periodText}`}
         columns={COLUMNS}
         rows={filtered}
         getRowId={(row) => row.id}
         defaultSort={{ columnId: "due", direction: "asc" }}
-        emptyTitle={rows.length === 0 ? `No tasks in ${monthLabel}` : "No tasks match"}
+        emptyTitle={rows.length === 0 ? `No tasks in this period` : "No tasks match"}
         emptyDescription={
           rows.length === 0
-            ? "Pick another month from the selector in the top bar."
+            ? "Pick another period from the selector in the top bar."
             : "Try a different search, status, or category."
         }
       />

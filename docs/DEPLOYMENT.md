@@ -19,6 +19,11 @@ Secrets never go in git, and never in `.env` files.
 | GitHub Actions secrets | `DIRECT_DATABASE_URL`, `CLOUDFLARE_API_TOKEN`, `CLOUDFLARE_ACCOUNT_ID` |
 | Hyperdrive configuration | The runtime database connection |
 | `wrangler secret put` | Other runtime secrets, as later phases add them |
+| Runtime secrets (host settings) | `BETTER_AUTH_SECRET`, `BETTER_AUTH_URL`, `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, `AUTH_BOOTSTRAP_ADMINS`, `TEAMWORK_BASE_URL`, `TEAMWORK_API_KEY` |
+
+Each deployment needs its own `BETTER_AUTH_URL`, and `<BETTER_AUTH_URL>/api/auth/callback/google`
+registered as a redirect URI on the Google OAuth client. If any sign-in variable is missing, every
+page redirects to the login page, which says sign-in is not set up: the app fails closed.
 
 **The OpenNext adapter copies `.env`, `.env.local`, and similar files into the deployed Worker.** Code
 would keep working with the password inside it. `npm run build:cloudflare` runs

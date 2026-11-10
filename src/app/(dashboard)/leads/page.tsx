@@ -1,10 +1,10 @@
 import type { Metadata } from "next";
-import { getReferenceDate } from "@/lib/data/calendar";
+import { getToday } from "@/lib/data/calendar";
 import { LeadInbox } from "@/features/leads/lead-inbox";
 
 export const metadata: Metadata = { title: "Lead Inbox" };
 
 export default async function LeadInboxPage() {
-  const referenceDate = await getReferenceDate();
+  const referenceDate = await getToday();
   return <LeadInbox referenceDate={referenceDate} />;
 }

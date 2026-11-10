@@ -1,6 +1,6 @@
 "use client";
 
-import { MonthLink, useMonthHref } from "@/components/layout/month-link";
+import { PeriodLink, usePeriodHref } from "@/components/layout/period-link";
 import { useMemo, useState } from "react";
 import { KanbanSquare } from "lucide-react";
 import { DataTable, type Column } from "@/components/data/data-table";
@@ -14,6 +14,7 @@ import { formatDate } from "@/lib/format";
 import { LEAD_SOURCES, PIPELINE_STAGES, type Lead } from "@/lib/types";
 import { DATE_PRESETS, filterLeads } from "./lead-logic";
 import { useLeads } from "./leads-store";
+import { PreviewChangesNote } from "./preview-changes-note";
 import { SpamTag } from "./spam-tag";
 
 const SOURCE_OPTIONS = LEAD_SOURCES.map((source) => ({ value: source, label: source }));
@@ -27,13 +28,13 @@ const COLUMNS: Column<Lead>[] = [
     sortValue: (lead) => lead.name,
     cell: (lead) => (
       <div className="flex min-w-0 flex-col items-start gap-1">
-        <MonthLink
+        <PeriodLink
           href={`/leads/${lead.id}`}
           onClick={(event) => event.stopPropagation()}
           className="rounded-sm font-medium outline-none hover:underline focus-visible:ring-2 focus-visible:ring-ring"
         >
           {lead.name}
-        </MonthLink>
+        </PeriodLink>
         {lead.spamFilteredBy ? <SpamTag by={lead.spamFilteredBy} /> : null}
       </div>
     ),
@@ -43,13 +44,15 @@ const COLUMNS: Column<Lead>[] = [
     header: "Email",
     hideBelow: "md",
     sortValue: (lead) => lead.email,
-    cell: (lead) => <span className="text-muted-foreground">{lead.email}</span>,
+    cell: (lead) => <span className="text-muted-foreground">{lead.email ?? "—"}</span>,
   },
   {
-    id: "phone",
-    header: "Phone",
+    id: "company",
+    header: "Company",
     hideBelow: "xl",
-    cell: (lead) => <span className="whitespace-nowrap text-muted-foreground">{lead.phone || "—"}</span>,
+    sortValue: (lead) => lead.company,
+    // Older leads have only a company, which is then also the name; do not repeat it.
+    cell: (lead) => <span className="text-muted-foreground">{lead.company && lead.company !== lead.name ? lead.company : "—"}</span>,
   },
   {
     id: "source",
@@ -59,18 +62,18 @@ const COLUMNS: Column<Lead>[] = [
     cell: (lead) => lead.attribution.source,
   },
   {
-    id: "page",
-    header: "Website page",
+    id: "heard-from",
+    header: "Heard from",
     hideBelow: "xl",
-    sortValue: (lead) => lead.pageUrl,
-    cell: (lead) => <span className="text-muted-foreground">{lead.pageUrl}</span>,
+    sortValue: (lead) => lead.attribution.heardFrom,
+    cell: (lead) => <span className="text-muted-foreground">{lead.attribution.heardFrom ?? "—"}</span>,
   },
   {
     id: "submitted",
     header: "Submitted",
     hideBelow: "sm",
     sortValue: (lead) => lead.submittedAt,
-    cell: (lead) => <span className="whitespace-nowrap">{formatDate(lead.submittedAt)}</span>,
+    cell: (lead) => <span className="whitespace-nowrap">{lead.submittedAt ? formatDate(lead.submittedAt) : "No date"}</span>,
   },
   {
     id: "stage",
@@ -82,7 +85,7 @@ const COLUMNS: Column<Lead>[] = [
 
 export function LeadInbox({ referenceDate }: { referenceDate: string }) {
   const { leads } = useLeads();
-  const withMonth = useMonthHref();
+  const withPeriod = usePeriodHref();
   const [search, setSearch] = useState("");
   const [source, setSource] = useState(ALL);
   const [period, setPeriod] = useState(ALL);
@@ -97,16 +100,17 @@ export function LeadInbox({ referenceDate }: { referenceDate: string }) {
     <PageBody>
       <PageHeader
         title="Lead Inbox"
-        description="Every form submission, newest first. Open a lead to see where it came from and manage it."
+        description="Every lead, newest first. Open a lead to see where it came from and manage it."
         actions={
           <Button variant="outline" asChild>
-            <MonthLink href="/leads/pipeline">
+            <PeriodLink href="/leads/pipeline">
               <KanbanSquare aria-hidden />
               Pipeline
-            </MonthLink>
+            </PeriodLink>
           </Button>
         }
       />
+        <PreviewChangesNote />
         <FilterBar>
           <SearchInput value={search} onChange={setSearch} placeholder="Search name, email or company" />
           <FilterSelect label="Filter by source" allLabel="All sources" value={source} options={SOURCE_OPTIONS} onChange={setSource} />
@@ -114,11 +118,11 @@ export function LeadInbox({ referenceDate }: { referenceDate: string }) {
           <FilterSelect label="Filter by pipeline stage" allLabel="All stages" value={stage} options={STAGE_OPTIONS} onChange={setStage} />
         </FilterBar>
         <DataTable
-          caption="Leads from website forms"
+          caption="Leads"
           columns={COLUMNS}
           rows={rows}
           getRowId={(lead) => lead.id}
-          rowHref={(lead) => withMonth(`/leads/${lead.id}`)}
+          rowHref={(lead) => withPeriod(`/leads/${lead.id}`)}
           defaultSort={{ columnId: "submitted", direction: "desc" }}
           emptyTitle="No leads match"
           emptyDescription="Try a different search, or clear a filter."

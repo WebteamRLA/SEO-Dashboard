@@ -2,9 +2,9 @@ import type { Metadata } from "next";
 import { PreviewNotice } from "@/components/data/preview-notice";
 import { PageBody, PageHeader } from "@/components/layout/page-header";
 import { VisitorsView } from "@/features/traffic/visitors-view";
-import { getReferenceDate, resolveMonth } from "@/lib/data/calendar";
+import { getToday, resolvePagePeriod } from "@/lib/data/calendar";
 import { getTrafficChannels, getTrafficMetrics } from "@/lib/data/traffic";
-import { formatMonth } from "@/lib/format";
+import { describePeriod } from "@/lib/date-range";
 import { toMonthKey } from "@/lib/month";
 
 export const metadata: Metadata = { title: "Visitors" };
@@ -12,19 +12,24 @@ export const metadata: Metadata = { title: "Visitors" };
 export default async function VisitorsPage({
   searchParams,
 }: {
-  searchParams: Promise<{ month?: string | string[] }>;
+  searchParams: Promise<{
+    range?: string | string[];
+    from?: string | string[];
+    to?: string | string[];
+    month?: string | string[];
+  }>;
 }) {
-  const month = await resolveMonth((await searchParams).month);
-  const [traffic, channels, today] = await Promise.all([getTrafficMetrics(), getTrafficChannels(), getReferenceDate()]);
-  const monthLabel = formatMonth(month);
+  const period = await resolvePagePeriod(await searchParams);
+  const [traffic, channels, today] = await Promise.all([getTrafficMetrics(), getTrafficChannels(), getToday()]);
+  const periodText = describePeriod(period);
 
   return (
     <PageBody>
-      <PageHeader title="Visitors" description={`Sessions, users and where they come from. Showing ${monthLabel}`} phase="P2" />
+      <PageHeader title="Visitors" description={`Sessions, users and where they come from. ${periodText}`} phase="P2" />
       <PreviewNotice phase="P2" />
       <VisitorsView
-        month={month}
-        monthLabel={monthLabel}
+        range={period.range}
+        periodText={periodText}
         inProgressMonth={toMonthKey(today)}
         traffic={traffic}
         channels={channels}

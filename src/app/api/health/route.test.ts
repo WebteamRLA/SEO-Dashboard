@@ -2,7 +2,10 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { GET } from "./route";
 
 const { createDb } = vi.hoisted(() => ({ createDb: vi.fn() }));
-vi.mock("@/server/db/client", () => ({ createDb }));
+vi.mock("@/server/db/client", () => ({
+  createDb,
+  releaseDb: async (db: { $disconnect: () => Promise<void> }) => db.$disconnect(),
+}));
 
 describe("GET /api/health", () => {
   beforeEach(() => {
