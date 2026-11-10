@@ -22,6 +22,14 @@ export interface LeadRow {
   stage: string;
   pipelineNote: string | null;
   wonOn: Date | null;
+  /** Website-form columns. Optional so sheet-only callers need not set them. */
+  phone?: string | null;
+  formName?: string | null;
+  pageUrl?: string | null;
+  landingPage?: string | null;
+  referrer?: string | null;
+  utmMedium?: string | null;
+  utmCampaign?: string | null;
   payments: { sequence: number; amount: DecimalLike; commission: DecimalLike | null }[];
 }
 
@@ -57,19 +65,19 @@ export function toLead(row: LeadRow): Lead {
     origin: oneOf(row.origin, ORIGINS, "manual"),
     name: row.name ?? row.company ?? row.email ?? "Unnamed lead",
     email: row.email,
-    phone: null,
+    phone: row.phone ?? null,
     company: row.company,
     message: buildMessage(row),
-    formName: null,
-    pageUrl: null,
+    formName: row.formName ?? null,
+    pageUrl: row.pageUrl ?? null,
     submittedAt: row.submittedAt?.toISOString() ?? null,
     attribution: {
       source: oneOf<LeadSource>(row.channel, LEAD_SOURCES, "Unknown"),
       heardFrom: row.heardFrom,
-      medium: null,
-      campaign: null,
-      landingPage: null,
-      referrer: null,
+      medium: row.utmMedium ?? null,
+      campaign: row.utmCampaign ?? null,
+      landingPage: row.landingPage ?? null,
+      referrer: row.referrer ?? null,
     },
     stage: oneOf<PipelineStage>(row.stage, PIPELINE_STAGES, "new"),
     dealValue: received > 0 ? Math.round(received * 100) / 100 : null,

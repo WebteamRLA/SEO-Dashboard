@@ -132,6 +132,22 @@ model Lead {
   /// The row's original cells, kept so values can be re-mapped without re-importing.
   sheetRow      Json?         @map("sheet_row")
   sheetSyncedAt DateTime?     @map("sheet_synced_at")
+  // Website-form leads (Fluent Forms webhook). Null for sheet leads.
+  phone         String?
+  formName      String?       @map("form_name")
+  /// The page the form was submitted on.
+  pageUrl       String?       @map("page_url")
+  /// The visitor's first page on the site, from the tracking snippet.
+  landingPage   String?       @map("landing_page")
+  /// The external site that sent the visitor, from the tracking snippet.
+  referrer      String?
+  utmSource     String?       @map("utm_source")
+  utmMedium     String?       @map("utm_medium")
+  utmCampaign   String?       @map("utm_campaign")
+  /// Identifies the form entry so a repeated webhook updates instead of duplicating.
+  formEntryKey  String?       @unique @map("form_entry_key")
+  /// The webhook's original fields, kept so values can be re-mapped later.
+  formPayload   Json?         @map("form_payload")
   payments      LeadPayment[]
   createdAt     DateTime      @default(now()) @map("created_at")
   updatedAt     DateTime      @updatedAt @map("updated_at")
