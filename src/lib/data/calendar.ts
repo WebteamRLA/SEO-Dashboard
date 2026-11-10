@@ -1,14 +1,17 @@
 import "server-only";
+import { requireSessionUser } from "@/server/auth/session";
 import { ACTIVE_MONTHS, STRATEGY_MONTHS } from "@/mocks/calendar";
 import { resolvePeriod, type Period } from "@/lib/date-range";
 import { instantDay } from "@/lib/format";
 import type { ISODate, MonthKey } from "@/lib/types";
 
 export async function getAvailableMonths(): Promise<MonthKey[]> {
+  await requireSessionUser();
   return ACTIVE_MONTHS;
 }
 
 export async function getStrategyMonths(): Promise<MonthKey[]> {
+  await requireSessionUser();
   return STRATEGY_MONTHS;
 }
 
@@ -19,6 +22,7 @@ export async function getStrategyMonths(): Promise<MonthKey[]> {
  * two agree around midnight.
  */
 export async function getToday(): Promise<ISODate> {
+  await requireSessionUser();
   return instantDay(new Date().toISOString());
 }
 
@@ -30,6 +34,7 @@ export async function resolvePagePeriod(params: {
   to?: string | string[];
   month?: string | string[];
 }): Promise<Period> {
+  await requireSessionUser();
   return resolvePeriod(params, await getToday());
 }
 

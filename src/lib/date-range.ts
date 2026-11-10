@@ -55,11 +55,16 @@ export function isPreset(value: unknown): value is RangePreset {
   return RANGE_PRESETS.some((preset) => preset.id === value);
 }
 
+/**
+ * "This month" and "This quarter" cover the whole calendar period, so work due
+ * later in it still counts. "Last N days" and "Year to date" end today.
+ */
 export function presetRange(preset: RangePreset, today: ISODate): DateRange {
   const [y, m] = today.split("-").map(Number) as [number, number];
+  const quarterStart = Math.floor((m - 1) / 3) * 3;
   switch (preset) {
     case "this-month":
-      return { from: utc(y, m - 1, 1), to: today };
+      return { from: utc(y, m - 1, 1), to: utc(y, m, 0) };
     case "last-month":
       return { from: utc(y, m - 2, 1), to: utc(y, m - 1, 0) };
     case "last-7-days":
@@ -69,7 +74,7 @@ export function presetRange(preset: RangePreset, today: ISODate): DateRange {
     case "last-90-days":
       return { from: addDays(today, -89), to: today };
     case "this-quarter":
-      return { from: utc(y, Math.floor((m - 1) / 3) * 3, 1), to: today };
+      return { from: utc(y, quarterStart, 1), to: utc(y, quarterStart + 3, 0) };
     case "year-to-date":
       return { from: utc(y, 0, 1), to: today };
   }

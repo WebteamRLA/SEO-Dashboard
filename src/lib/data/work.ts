@@ -1,4 +1,5 @@
 import "server-only";
+import { requireSessionUser } from "@/server/auth/session";
 import { resolveRoadmap } from "@/lib/domain/progress";
 import { fetchSeoProjectTasks } from "@/server/teamwork/client";
 import { filterByTag, findTagId, mapTeamworkTasks } from "@/server/teamwork/map";
@@ -7,10 +8,12 @@ import type { MonthKey, RoadmapItemWithProgress, Task } from "@/lib/types";
 import { roadmapItems, tasks } from "@/mocks/work";
 
 export async function getTasks(): Promise<Task[]> {
+  await requireSessionUser();
   return tasks;
 }
 
 export async function getTasksForMonth(month: MonthKey): Promise<Task[]> {
+  await requireSessionUser();
   return tasks.filter((task) => task.month === month);
 }
 
@@ -26,6 +29,7 @@ export interface WorkTrackerData {
  * and Roadmap still use the sample data above until they are wired up too.
  */
 export async function getWorkTrackerData(): Promise<WorkTrackerData> {
+  await requireSessionUser();
   const { seoTagName } = getTeamworkConfig();
   const { response, projectName } = await fetchSeoProjectTasks();
   const seoTagId = findTagId(response.included, seoTagName);
@@ -35,5 +39,6 @@ export async function getWorkTrackerData(): Promise<WorkTrackerData> {
 
 /** Roadmap items with status and progress derived from their linked tasks. */
 export async function getRoadmap(): Promise<RoadmapItemWithProgress[]> {
+  await requireSessionUser();
   return resolveRoadmap(roadmapItems, tasks);
 }

@@ -2,9 +2,7 @@ import "server-only";
 import type { Lead } from "@/lib/types";
 import { requireSessionUser } from "@/server/auth/session";
 import { createDb, releaseDb } from "@/server/db/client";
-import { toLead } from "@/server/leads/to-lead";
-
-const WITH_PAYMENTS = { payments: { orderBy: { sequence: "asc" } } } as const;
+import { LEAD_INCLUDE, toLead } from "@/server/leads/to-lead";
 
 /** All leads, newest first; leads without a date last. Requires a signed-in user. */
 export async function getLeads(): Promise<Lead[]> {
@@ -12,7 +10,7 @@ export async function getLeads(): Promise<Lead[]> {
   const db = createDb();
   try {
     const rows = await db.lead.findMany({
-      include: WITH_PAYMENTS,
+      include: LEAD_INCLUDE,
       orderBy: [{ submittedAt: { sort: "desc", nulls: "last" } }, { createdAt: "desc" }],
     });
     return rows.map(toLead);
@@ -25,7 +23,7 @@ export async function getLead(id: string): Promise<Lead | null> {
   await requireSessionUser();
   const db = createDb();
   try {
-    const row = await db.lead.findUnique({ where: { id }, include: WITH_PAYMENTS });
+    const row = await db.lead.findUnique({ where: { id }, include: LEAD_INCLUDE });
     return row ? toLead(row) : null;
   } finally {
     await releaseDb(db);

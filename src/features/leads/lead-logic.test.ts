@@ -66,10 +66,10 @@ describe("groupByStage", () => {
       lead({ id: "c", stage: "new" }),
     ]);
     expect(columns.map((column) => column.stage)).toEqual([
-      "new", "contacted", "meeting", "proposal", "won", "lost", "spam",
+      "spam", "new", "contacted", "meeting", "proposal", "won", "lost",
     ]);
-    expect(columns[4]?.totalValue).toBe(1500);
-    expect(columns[0]?.leads).toHaveLength(1);
+    expect(columns[5]?.totalValue).toBe(1500);
+    expect(columns[1]?.leads).toHaveLength(1);
   });
 });
 

@@ -28,6 +28,8 @@ export interface Task {
   month: MonthKey;
   dueDate: ISODate;
   completedDate: ISODate | null;
+  /** Exact completion time, when the source has one (Teamwork does). */
+  completedAt?: string | null;
 }
 
 export interface TaskCounts {

@@ -55,6 +55,7 @@ export function mapTeamworkTasks(
       month: taskMonth(raw),
       dueDate: raw.dueDate ?? "",
       completedDate: raw.completedOn ? raw.completedOn.slice(0, 10) : null,
+      completedAt: raw.completedAt ?? null,
     };
   });
 

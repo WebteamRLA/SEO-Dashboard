@@ -93,26 +93,6 @@ export interface DeliveryModule {
 
 /* Settings ----------------------------------------------------------------- */
 
-export type IntegrationId = "teamwork" | "search-console" | "analytics" | "crm";
-
-export interface Integration {
-  id: IntegrationId;
-  name: string;
-  description: string;
-  status: "connected" | "not-connected" | "needs-confirmation";
-  account: string | null;
-  lastSync: ISODateTime | null;
-  phase: Phase;
-}
-
-export interface FormConnection {
-  id: string;
-  name: string;
-  url: string;
-  status: "connected" | "not-connected";
-  lastSubmission: ISODateTime | null;
-}
-
 export interface NotificationPreference {
   id: string;
   label: string;
@@ -124,8 +104,11 @@ export interface NotificationPreference {
   phase: Phase;
 }
 
+export type NotificationKind = "lead" | "task-completed" | "task-overdue";
+
 export interface AppNotification {
   id: string;
+  kind: NotificationKind;
   title: string;
   description: string;
   createdAt: ISODateTime;

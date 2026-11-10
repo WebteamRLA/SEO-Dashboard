@@ -8,6 +8,7 @@ import { PhaseBadge } from "@/components/data/phase-badge";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { findActiveNav, NAVIGATION, type NavGroup } from "@/config/navigation";
 import { cn } from "@/lib/utils";
+import { BrandLogo } from "./brand-logo";
 import { usePeriodHref } from "./period-link";
 
 const rowClass =
@@ -99,12 +100,7 @@ export function SidebarNav({ onNavigate }: { onNavigate?: () => void }) {
 export function SidebarBrand() {
   return (
     <div className="flex h-14 shrink-0 items-center gap-2.5 border-b border-sidebar-border px-4">
-      <span
-        className="flex size-7 items-center justify-center rounded-md bg-primary text-xs font-semibold text-primary-foreground"
-        aria-hidden
-      >
-        RL
-      </span>
+      <BrandLogo className="size-8" />
       <span className="min-w-0 leading-tight">
         <span className="block truncate text-sm font-semibold">SEO Dashboard</span>
         <span className="block truncate text-xs text-muted-foreground">RightLeft Agency</span>

@@ -111,8 +111,6 @@ export const NAVIGATION: NavGroup[] = [
     label: "Settings",
     icon: Settings,
     items: [
-      { label: "Integrations", href: "/settings/integrations" },
-      { label: "Forms Setup", href: "/settings/forms" },
       { label: "Team & Access", href: "/settings/team" },
       { label: "Notifications", href: "/settings/notifications" },
       { label: "Delivery Roadmap", href: "/settings/delivery-roadmap" },

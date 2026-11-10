@@ -5,7 +5,7 @@ import { OverviewView } from "@/features/overview/overview-view";
 import { getAvailableMonths, getToday, resolvePagePeriod } from "@/lib/data/calendar";
 import { getWorkTrackerData, type WorkTrackerData } from "@/lib/data/work";
 import { describePeriod } from "@/lib/date-range";
-import { countTasks, taskInPeriod } from "@/lib/domain/progress";
+import { countTasks, taskInPeriod, taskProgress, yearRange } from "@/lib/domain/progress";
 import { toMonthKey } from "@/lib/month";
 
 
@@ -32,10 +32,18 @@ export default async function OverviewPage({
 }) {
   const period = await resolvePagePeriod(await searchParams);
   const { range } = period;
-  const [work, activeMonths, today] = await Promise.all([loadWork(), getAvailableMonths(), getToday()]);
+  const today = await getToday();
+  const [work, activeMonths] = await Promise.all([loadWork(), getAvailableMonths()]);
   const { tasks, people } = work;
 
   const periodTasks = tasks.filter((task) => taskInPeriod(task, range));
+  const periodCounts = countTasks(periodTasks);
+
+  // Plan progress comes from the SEO tasks in Teamwork, computed exactly as the
+  // Strategy Roadmap page does. Null only when Teamwork is down.
+  const year = today.slice(0, 4);
+  const planProgress = work.error ? null : taskProgress(tasks, range);
+  const yearlyPlan = work.error ? null : taskProgress(tasks, yearRange(today));
 
   const tasksByMonth = activeMonths.map((key) => {
     const counts = countTasks(tasks.filter((task) => task.month === key));
@@ -73,10 +81,10 @@ export default async function OverviewPage({
           periodText={describePeriod(period)}
           months={activeMonths}
           inProgressMonth={toMonthKey(today)}
-          taskCounts={countTasks(periodTasks)}
-          // No live roadmap source yet: how Teamwork marks roadmap items is undecided.
-          yearlyPlan={null}
-          planProgress={null}
+          taskCounts={periodCounts}
+          planYear={year}
+          yearlyPlan={yearlyPlan}
+          planProgress={planProgress}
           tasksByMonth={tasksByMonth}
           recentCompleted={recentCompleted}
         />

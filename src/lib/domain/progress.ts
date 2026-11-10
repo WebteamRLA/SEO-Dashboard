@@ -18,6 +18,21 @@ export function taskInPeriod(task: Task, range: DateRange): boolean {
   return isWithin(task.status === "completed" ? task.completedDate : task.dueDate, range);
 }
 
+/**
+ * Share of a period's tasks that are completed. The Overview and the Strategy
+ * Roadmap both use this, so their plan figures always agree.
+ */
+export function taskProgress(tasks: readonly Task[], range: DateRange): Progress {
+  const counts = countTasks(tasks.filter((task) => taskInPeriod(task, range)));
+  return toProgress(counts.completed, counts.total);
+}
+
+/** The calendar year containing the given date, as a range. */
+export function yearRange(date: string): DateRange {
+  const year = date.slice(0, 4);
+  return { from: `${year}-01-01`, to: `${year}-12-31` };
+}
+
 export function toProgress(completed: number, total: number): Progress {
   return {
     completed,

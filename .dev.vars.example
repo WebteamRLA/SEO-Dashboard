@@ -22,3 +22,24 @@ BETTER_AUTH_SECRET=""
 BETTER_AUTH_URL=""
 # Comma-separated emails that are always admins, so the first person can sign in.
 AUTH_BOOTSTRAP_ADMINS=""
+
+# Fluent Forms webhook (website leads). Fluent Forms sends it in the X-Webhook-Secret
+# header; requests without it are rejected. Generate with: openssl rand -hex 32
+FLUENT_FORMS_WEBHOOK_SECRET=
+# Optional. The website's host, so its own pages are not counted as a referrer.
+# LEADS_SITE_HOST=rightleftagency.com
+
+# Resend (team invite emails). API key from resend.com > API Keys, with sending access.
+RESEND_API_KEY=""
+# Optional. Sender address on a domain verified in Resend.
+# RESEND_FROM="SEO Dashboard <invites@webmail.rightleftagency.com>"
+
+# Google Search Console and GA4 (Overview). One service account reads both; see
+# docs/GOOGLE-DATA.md. Paste the downloaded JSON key base64-encoded on one line:
+#   base64 -w0 key.json      (macOS: base64 -i key.json)
+GOOGLE_SERVICE_ACCOUNT_KEY=""
+# The Search Console property exactly as Search Console names it, e.g.
+# sc-domain:rightleftagency.com or https://www.rightleftagency.com/
+GSC_SITE_URL=""
+# Numeric GA4 property ID (GA4 > Admin > Property details), not the G- measurement ID.
+GA4_PROPERTY_ID=""

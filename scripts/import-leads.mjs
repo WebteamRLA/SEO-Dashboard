@@ -78,9 +78,15 @@ try {
                          pipeline_note, won_on, sheet_row_key, sheet_row, sheet_synced_at, updated_at)
        values ($1, 'sheet', $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, ${NOW}, ${NOW})
        on conflict (sheet_row_key) do update set
-         submitted_at = excluded.submitted_at, name = excluded.name, email = excluded.email,
-         company = excluded.company, heard_from = excluded.heard_from, services = excluded.services,
-         channel = excluded.channel, stage = excluded.stage, pipeline_note = excluded.pipeline_note,
+         submitted_at = excluded.submitted_at,
+         -- Once someone edits a lead in the dashboard, its contact details and stage are theirs.
+         name = case when lead.edited_at is null then excluded.name else lead.name end,
+         email = case when lead.edited_at is null then excluded.email else lead.email end,
+         company = case when lead.edited_at is null then excluded.company else lead.company end,
+         heard_from = excluded.heard_from, services = excluded.services,
+         channel = excluded.channel,
+         stage = case when lead.edited_at is null then excluded.stage else lead.stage end,
+         pipeline_note = excluded.pipeline_note,
          won_on = excluded.won_on, sheet_row = excluded.sheet_row,
          sheet_synced_at = excluded.sheet_synced_at, updated_at = excluded.updated_at
        returning id, (xmax = 0) as inserted`,

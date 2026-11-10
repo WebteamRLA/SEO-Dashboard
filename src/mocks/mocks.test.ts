@@ -3,7 +3,7 @@ import { PIPELINE_STAGES } from "@/lib/types";
 import { toMonthKey } from "@/lib/month";
 import { REFERENCE_DATE } from "./calendar";
 import { leads } from "./leads";
-import { deliveryModules, integrations } from "./operations";
+import { deliveryModules } from "./operations";
 import { roadmapItems, tasks } from "./work";
 
 /** Sample data must never show something impossible, even in a preview. */
@@ -75,8 +75,7 @@ describe("sample data invariants", () => {
     }
   });
 
-  it("does not invent delivery dates or claim a live connection", () => {
+  it("does not invent delivery dates", () => {
     for (const entry of deliveryModules) expect(entry.plannedDate).toBeNull();
-    for (const integration of integrations) expect(integration.status).not.toBe("connected");
   });
 });

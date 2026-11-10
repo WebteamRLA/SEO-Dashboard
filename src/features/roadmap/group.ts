@@ -1,34 +1,31 @@
-import { TASK_CATEGORIES, type MonthKey, type Progress, type RoadmapItemWithProgress, type TaskCategory } from "@/lib/types";
+import type { MonthKey, Task } from "@/lib/types";
 
 export type StatusFilter = "all" | "completed" | "pending";
 
-export function filterByStatus(
-  items: readonly RoadmapItemWithProgress[],
-  filter: StatusFilter,
-): RoadmapItemWithProgress[] {
-  return filter === "all" ? [...items] : items.filter((item) => item.status === filter);
+/** Pending means not completed yet: to do or in progress. */
+export function filterByStatus(tasks: readonly Task[], filter: StatusFilter): Task[] {
+  if (filter === "all") return [...tasks];
+  return tasks.filter((task) => (task.status === "completed") === (filter === "completed"));
 }
 
-/** Groups in the fixed category order. Empty categories are omitted. */
-export function groupByCategory(
-  items: readonly RoadmapItemWithProgress[],
-): { category: TaskCategory; items: RoadmapItemWithProgress[] }[] {
-  return TASK_CATEGORIES.map((category) => ({
-    category,
-    items: items.filter((item) => item.category === category),
-  })).filter((group) => group.items.length > 0);
+/**
+ * Groups by category, derived from the tasks rather than a fixed list, since
+ * Teamwork tasks are categorised by task list. Alphabetical; empty groups omitted.
+ */
+export function groupByCategory(tasks: readonly Task[]): { category: string; tasks: Task[] }[] {
+  const categories = [...new Set(tasks.map((task) => task.category))].sort((a, b) => a.localeCompare(b));
+  return categories.map((category) => ({ category, tasks: tasks.filter((task) => task.category === category) }));
 }
 
-/** One group per month, in the order given, including months with no items. */
+/** One group per month, in the order given, including months with no tasks. */
 export function groupByMonth(
-  items: readonly RoadmapItemWithProgress[],
+  tasks: readonly Task[],
   months: readonly MonthKey[],
-): { month: MonthKey; items: RoadmapItemWithProgress[] }[] {
-  return months.map((month) => ({ month, items: items.filter((item) => item.month === month) }));
+): { month: MonthKey; tasks: Task[] }[] {
+  return months.map((month) => ({ month, tasks: tasks.filter((task) => task.month === month) }));
 }
 
-/** "2 of 3 tasks", or "Not started" when nothing is linked yet. */
-export function describeItemProgress(progress: Progress): string {
-  if (progress.total === 0) return "Not started";
-  return `${progress.completed} of ${progress.total} ${progress.total === 1 ? "task" : "tasks"}`;
+/** January to December of the given year. */
+export function monthsOfYear(year: string): MonthKey[] {
+  return Array.from({ length: 12 }, (_, index) => `${year}-${String(index + 1).padStart(2, "0")}` as MonthKey);
 }

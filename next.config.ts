@@ -91,6 +91,23 @@ const nextConfig: NextConfig = {
   // Dev-only badge. Its default bottom-left spot covers the account button
   // pinned to the bottom of the sidebar.
   devIndicators: { position: "bottom-right" },
+  poweredByHeader: false,
+  async headers() {
+    return [
+      {
+        // Baseline hardening for every response. No page should ever be framed, sniffed
+        // as another type, or leak full URLs (which can hold lead ids) to other sites.
+        source: "/:path*",
+        headers: [
+          { key: "X-Frame-Options", value: "DENY" },
+          { key: "Content-Security-Policy", value: "frame-ancestors 'none'" },
+          { key: "X-Content-Type-Options", value: "nosniff" },
+          { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
+          { key: "Permissions-Policy", value: "camera=(), microphone=(), geolocation=()" },
+        ],
+      },
+    ];
+  },
   async redirects() {
     return [
       // The Delivery Roadmap moved under Settings. Keeps old links and bookmarks

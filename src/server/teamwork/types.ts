@@ -7,6 +7,7 @@ export interface TeamworkTask {
   dueDate: string | null;
   startDate: string | null;
   completedOn: string | null;
+  completedAt?: string | null;
   createdAt: string | null;
   tasklistId: number | null;
   tagIds: number[] | null;

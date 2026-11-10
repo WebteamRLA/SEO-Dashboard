@@ -29,7 +29,9 @@ export type SpamFilteredBy = "ai" | "courtney";
 
 export interface LeadNote {
   id: string;
-  authorId: string;
+  /** Null once the author's account is gone; `authorName` keeps who wrote it. */
+  authorId: string | null;
+  authorName: string;
   body: string;
   createdAt: ISODateTime;
 }
@@ -46,7 +48,9 @@ export interface LeadActivity {
   id: string;
   type: LeadActivityType;
   description: string;
-  actorId: string | null; // null means the system.
+  actorId: string | null;
+  /** Who did it, as named at the time. Null means the system. */
+  actorName: string | null;
   createdAt: ISODateTime;
 }
 

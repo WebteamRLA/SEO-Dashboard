@@ -38,7 +38,6 @@ import { PIPELINE_STAGES, type Lead, type PipelineStage } from "@/lib/types";
 import { DealValueDialog } from "./deal-value-dialog";
 import { groupByStage } from "./lead-logic";
 import { useLeads } from "./leads-store";
-import { PreviewChangesNote } from "./preview-changes-note";
 import { SpamTag } from "./spam-tag";
 
 function toStage(value: unknown): PipelineStage | null {
@@ -129,7 +128,6 @@ export function LeadPipeline() {
           </>
         }
       />
-      <PreviewChangesNote />
         <DndContext
           id="lead-pipeline"
           sensors={sensors}

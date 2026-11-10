@@ -46,7 +46,7 @@ src/
 | Site Health | `/site-health/forms`, `/site-health/broken-links`, `/site-health/issues` | P2 |
 | Reports | `/reports` | P2 |
 | AI Agents | `/ai-agents`, `/ai-agents/[slug]` | P3, except the Lead Filter Agent (P2) |
-| Settings | `/settings/integrations`, `/settings/forms`, `/settings/team`, `/settings/notifications`, `/settings/delivery-roadmap` | P1 |
+| Settings | `/settings/team`, `/settings/notifications`, `/settings/delivery-roadmap` | P1 |
 
 ## Data flow
 
@@ -81,8 +81,44 @@ data, such as roadmap items and the sample traffic figures, by the months the pe
 
 `features/leads/leads-store.tsx` holds leads for the whole dashboard, so a pipeline move also shows
 in the inbox, lead details, Overview, Revenue, and Reports. Any page showing lead data reads
-`useLeads()` rather than server props. Changes last until the page reloads, and the lead pages say so. Step 2 swaps the store internals for Server
-Actions; consumers of `useLeads()` do not change.
+`useLeads()` rather than server props.
+
+Edits are saved. Each change shows at once, using the same rules the server applies
+(`lib/domain/leads`), then a Server Action in `server/leads/actions.ts` checks the session,
+validates the input (`server/leads/edits.ts`, zod), re-applies the rule to the stored lead, and
+writes the changed columns plus a history entry (`lead_event`, and `lead_note` for notes) in one
+transaction. The saved lead replaces the shown one; if saving fails, the screen rolls back and a
+toast says why. Notes and history keep the person's name as it was, so they still read correctly
+after someone's access is removed. Any signed-in user may edit leads.
+
+Edited leads are protected from the two importers: `lead.edited_at` is set on every dashboard edit.
+The sheet import (`npm run import:leads`) then keeps the lead's name, email, company, and stage,
+and a resent Fluent Forms entry keeps its contact details. A deal value typed in the dashboard
+(`lead.deal_value`) takes precedence over the sheet's revenue cells.
+
+## Notifications
+
+The topbar bell is built per request from live data only, by the pure, tested
+`buildNotificationFeed` in `src/server/notifications/feed.ts`: genuine leads
+submitted in the last 14 days, SEO tasks completed in Teamwork in the last 7
+days, and open SEO tasks past their due date. At most five of each kind and
+eight in all, newest first. The layout passes the feed to the topbar as a
+promise, so the page never waits on Teamwork; if Teamwork fails, only the task
+items drop out.
+
+Opening the menu calls the `markNotificationsSeen` Server Action, which sets an
+httpOnly cookie (`rla_notifications_seen`) holding the time. Items no newer than
+that time are read, so the red dot shows only for what arrived since. The state
+is per browser, not per account, which keeps it out of the database. The cookie
+is untrusted input: a malformed value, or one in the future, counts as never
+seen.
+
+Settings > Notifications saves each person's choices (`notification_preference`); events that are
+not delivered yet stay disabled. "New lead received" is delivered on both channels: in-app adds new
+leads to the bell (off removes them), and email goes out through Resend after the Fluent Forms
+webhook stores a first delivery (`server/notifications/send-new-lead.ts`, run with `after()` so the
+webhook answers first). Both are on by default. A resent entry emails no one, and the email escapes
+everything that came from the form.
 
 ## Authentication
 

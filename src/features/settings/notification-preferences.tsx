@@ -1,10 +1,12 @@
 "use client";
 
 import { useState } from "react";
+import { toast } from "sonner";
 import { PhaseBadge } from "@/components/data/phase-badge";
 import { DataTable, type Column } from "@/components/data/data-table";
 import { Switch } from "@/components/ui/switch";
 import type { NotificationPreference } from "@/lib/types";
+import { saveNotificationPreference } from "@/server/notifications/actions";
 
 type Channel = "email" | "inApp";
 
@@ -15,7 +17,7 @@ export function NotificationPreferences({
 }) {
   const [preferences, setPreferences] = useState<NotificationPreference[]>(initialPreferences);
 
-  function setChannel(id: string, channel: Channel, checked: boolean) {
+  function apply(id: string, channel: Channel, checked: boolean) {
     setPreferences((current) =>
       current.map((preference) => {
         // Unavailable preferences cannot change. Their switches are disabled too.
@@ -25,6 +27,22 @@ export function NotificationPreferences({
           : { ...preference, inApp: checked };
       }),
     );
+  }
+
+  /** Shows the change at once, saves it, and puts the switch back if saving fails. */
+  function setChannel(id: string, channel: Channel, checked: boolean) {
+    apply(id, channel, checked);
+    saveNotificationPreference(id, channel, checked)
+      .then((result) => {
+        if (!result.ok) {
+          apply(id, channel, !checked);
+          toast.error(result.error);
+        }
+      })
+      .catch(() => {
+        apply(id, channel, !checked);
+        toast.error("The setting could not be saved. Check your connection and try again.");
+      });
   }
 
   const columns: Column<NotificationPreference>[] = [

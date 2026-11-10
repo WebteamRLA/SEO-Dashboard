@@ -1,10 +1,7 @@
 import type {
   AiAgent,
-  AppNotification,
   BrokenLink,
   DeliveryModule,
-  FormConnection,
-  Integration,
   MonitoredForm,
   NotificationPreference,
   SiteIssue,
@@ -94,13 +91,6 @@ export const aiAgents: AiAgent[] = [
   },
 ];
 
-/** Steps every P1 module passes through. Only the frontend exists today. */
-const p1Steps = (...backend: string[]) => [
-  { label: "Frontend preview", done: true },
-  ...backend.map((label) => ({ label, done: false })),
-  { label: "Tested with real RLA data", done: false },
-];
-
 const plannedSteps = (phase: "P2" | "P3", preview: boolean) => [
   { label: `${phase} page preview`, done: preview },
   { label: "Scope confirmed", done: false },
@@ -110,56 +100,35 @@ const plannedSteps = (phase: "P2" | "P3", preview: boolean) => [
 
 /** Dates stay null: the approved roadmap has no confirmed delivery dates yet. */
 export const deliveryModules: DeliveryModule[] = [
-  { id: "p1-setup", name: "Application setup and login", phase: "P1", plannedDate: null, status: "frontend-preview", steps: p1Steps("Database and authentication", "Subdomain and deployment") },
-  { id: "p1-shell", name: "Dashboard layout and navigation", phase: "P1", plannedDate: null, status: "frontend-preview", steps: [{ label: "Frontend preview", done: true }, { label: "Permissions by role", done: false }] },
-  { id: "p1-teamwork", name: "Teamwork connection", phase: "P1", plannedDate: null, status: "not-started", steps: [{ label: "API access confirmed", done: false }, { label: "Projects, tasks, and statuses synced", done: false }, { label: "Tested with real RLA data", done: false }] },
-  { id: "p1-work", name: "Monthly Work Tracker", phase: "P1", plannedDate: null, status: "frontend-preview", steps: p1Steps("Teamwork data connected") },
-  { id: "p1-roadmap", name: "Strategy Roadmap", phase: "P1", plannedDate: null, status: "frontend-preview", steps: p1Steps("Progress calculated from Teamwork") },
-  { id: "p1-forms", name: "Website form connections", phase: "P1", plannedDate: null, status: "not-started", steps: [{ label: "Forms identified", done: false }, { label: "Common submission endpoint", done: false }, { label: "Test submissions", done: false }] },
-  { id: "p1-inbox", name: "Lead Inbox and Lead Details", phase: "P1", plannedDate: null, status: "frontend-preview", steps: p1Steps("Lead storage") },
-  { id: "p1-pipeline", name: "Lead Pipeline", phase: "P1", plannedDate: null, status: "frontend-preview", steps: p1Steps("Stage changes saved") },
-  { id: "p1-crm", name: "Two-way pipeline sync and lead gap check", phase: "P1", plannedDate: null, status: "not-started", steps: [{ label: "Pipedrive or Teamwork confirmed", done: false }, { label: "Two-way sync", done: false }, { label: "Lead gap alert", done: false }] },
-  { id: "p1-google", name: "Google Search Console and GA4 connection", phase: "P1", plannedDate: null, status: "not-started", steps: [{ label: "Access confirmed", done: false }, { label: "Metrics fetched", done: false }, { label: "Displayed in Overview", done: false }] },
-  { id: "p1-overview", name: "Overview Dashboard", phase: "P1", plannedDate: null, status: "frontend-preview", steps: p1Steps("Metrics calculated from live sources") },
-  { id: "p1-delivery", name: "Delivery Roadmap and Settings", phase: "P1", plannedDate: null, status: "frontend-preview", steps: p1Steps("Settings saved") },
-  { id: "p1-launch", name: "Testing and deployment to the RLA subdomain", phase: "P1", plannedDate: null, status: "not-started", steps: [{ label: "End-to-end testing", done: false }, { label: "Security and permissions review", done: false }, { label: "Production deployment", done: false }] },
+  { id: "p1-setup", name: "Application setup and login", phase: "P1", plannedDate: null, status: "complete", steps: [{ label: "Frontend preview", done: true }, { label: "Database and authentication", done: true }, { label: "Subdomain and deployment", done: true }, { label: "Tested with real RLA data", done: true }] },
+  { id: "p1-shell", name: "Dashboard layout and navigation", phase: "P1", plannedDate: null, status: "complete", steps: [{ label: "Frontend preview", done: true }, { label: "Permissions by role", done: true }] },
+  { id: "p1-teamwork", name: "Teamwork connection", phase: "P1", plannedDate: null, status: "complete", steps: [{ label: "API access confirmed", done: true }, { label: "Projects, tasks, and statuses synced", done: true }, { label: "Tested with real RLA data", done: true }] },
+  { id: "p1-work", name: "Monthly Work Tracker", phase: "P1", plannedDate: null, status: "complete", steps: [{ label: "Frontend preview", done: true }, { label: "Teamwork data connected", done: true }, { label: "Tested with real RLA data", done: true }] },
+  { id: "p1-roadmap", name: "Strategy Roadmap", phase: "P1", plannedDate: null, status: "complete", steps: [{ label: "Frontend preview", done: true }] },
+  { id: "p1-forms", name: "Website form connections", phase: "P1", plannedDate: null, status: "complete", steps: [{ label: "Common submission endpoint", done: true }] },
+  { id: "p1-inbox", name: "Lead Inbox and Lead Details", phase: "P1", plannedDate: null, status: "complete", steps: [{ label: "Frontend preview", done: true }, { label: "Lead storage", done: true }, { label: "Tested with real RLA data", done: true }] },
+  { id: "p1-pipeline", name: "Lead Pipeline", phase: "P1", plannedDate: null, status: "complete", steps: [{ label: "Frontend preview", done: true }, { label: "Stage changes saved", done: true }, { label: "Tested with real RLA data", done: true }] },
+  { id: "p1-overview", name: "Overview Dashboard", phase: "P1", plannedDate: null, status: "complete", steps: [{ label: "Frontend preview", done: true }] },
+  { id: "p1-delivery", name: "Delivery Roadmap and Settings", phase: "P1", plannedDate: null, status: "complete", steps: [{ label: "Frontend preview", done: true }] },
+  { id: "p1-launch", name: "Testing and deployment to the RLA subdomain", phase: "P1", plannedDate: null, status: "complete", steps: [{ label: "Security and permissions review", done: true }, { label: "Production deployment", done: true }] },
+  { id: "p2-google", name: "Google Search Console and GA4 connection", phase: "P2", plannedDate: null, status: "not-started", steps: [{ label: "Access confirmed", done: false }, { label: "Metrics fetched", done: false }, { label: "Displayed in Overview", done: false }] },
   { id: "p2-seo", name: "Traffic & SEO analytics", phase: "P2", plannedDate: null, status: "frontend-preview", steps: plannedSteps("P2", true) },
   { id: "p2-revenue", name: "Revenue Overview", phase: "P2", plannedDate: null, status: "frontend-preview", steps: plannedSteps("P2", true) },
   { id: "p2-health", name: "Site Health monitoring", phase: "P2", plannedDate: null, status: "frontend-preview", steps: plannedSteps("P2", true) },
   { id: "p2-reports", name: "Monthly Reports", phase: "P2", plannedDate: null, status: "frontend-preview", steps: plannedSteps("P2", true) },
   { id: "p2-spam", name: "AI spam filter", phase: "P2", plannedDate: null, status: "not-started", steps: [{ label: "Classification", done: false }, { label: "Spam stage automation", done: false }, { label: "Filtered by tags", done: false }] },
+  { id: "p2-crm", name: "Two-way pipeline sync and lead gap check", phase: "P2", plannedDate: null, status: "not-started", steps: [{ label: "Pipedrive or Teamwork confirmed", done: false }, { label: "Two-way sync", done: false }, { label: "Lead gap alert", done: false }] },
   { id: "p3-behavior", name: "Behavior Analytics", phase: "P3", plannedDate: null, status: "frontend-preview", steps: plannedSteps("P3", true) },
   { id: "p3-social", name: "Social Analytics", phase: "P3", plannedDate: null, status: "frontend-preview", steps: plannedSteps("P3", true) },
   { id: "p3-agents", name: "AI Agents", phase: "P3", plannedDate: null, status: "frontend-preview", steps: plannedSteps("P3", true) },
 ];
 
-export const integrations: Integration[] = [
-  { id: "teamwork", name: "Teamwork", description: "Projects, SEO tasks, statuses, categories, and tags.", status: "not-connected", account: null, lastSync: null, phase: "P1" },
-  { id: "search-console", name: "Google Search Console", description: "Clicks, impressions, CTR, and average position.", status: "not-connected", account: null, lastSync: null, phase: "P1" },
-  { id: "analytics", name: "Google Analytics 4", description: "Sessions, users, and traffic channels.", status: "not-connected", account: null, lastSync: null, phase: "P1" },
-  { id: "crm", name: "External CRM", description: "Two-way sync with Courtney's existing pipeline. Pipedrive or Teamwork, to be confirmed.", status: "needs-confirmation", account: null, lastSync: null, phase: "P1" },
-];
-
-export const formConnections: FormConnection[] = [
-  { id: "conn-contact", name: "Contact Form", url: "/contact", status: "not-connected", lastSubmission: null },
-  { id: "conn-audit", name: "Free SEO Audit", url: "/free-seo-audit", status: "not-connected", lastSubmission: null },
-  { id: "conn-quote", name: "Request a Quote", url: "/get-a-quote", status: "not-connected", lastSubmission: null },
-  { id: "conn-seo", name: "Service Inquiry (SEO)", url: "/services/seo", status: "not-connected", lastSubmission: null },
-  { id: "conn-web", name: "Service Inquiry (Web Design)", url: "/services/web-design", status: "not-connected", lastSubmission: null },
-  { id: "conn-news", name: "Newsletter Signup", url: "/blog", status: "not-connected", lastSubmission: null },
-];
-
 export const notificationPreferences: NotificationPreference[] = [
   { id: "new-lead", label: "New lead received", description: "When a website form submission arrives.", email: true, inApp: true, available: true, phase: "P1" },
-  { id: "lead-gap", label: "Lead missing from pipeline", description: "When a lead is in the inbox but not in the external pipeline.", email: true, inApp: true, available: true, phase: "P1" },
+  { id: "lead-gap", label: "Lead missing from pipeline", description: "When a lead is in the inbox but not in the external pipeline.", email: false, inApp: false, available: false, phase: "P2" },
   { id: "form-failure", label: "Form failure", description: "When a monitored form stops working.", email: false, inApp: false, available: false, phase: "P2" },
   { id: "broken-link", label: "New broken link", description: "When monitoring finds a broken link.", email: false, inApp: false, available: false, phase: "P2" },
   { id: "report-ready", label: "Monthly report ready", description: "When a monthly report is ready to review.", email: false, inApp: false, available: false, phase: "P2" },
   { id: "agent-activity", label: "AI agent activity", description: "When an agent completes a task or needs review.", email: false, inApp: false, available: false, phase: "P3" },
 ];
 
-export const notifications: AppNotification[] = [
-  { id: "n1", title: "New lead received", description: "A Request a Quote form was submitted.", createdAt: "2026-11-05T14:12:00Z", href: "/leads", read: false },
-  { id: "n2", title: "Lead missing from pipeline", description: "One lead is not yet in the external pipeline.", createdAt: "2026-11-04T09:30:00Z", href: "/leads/pipeline", read: false },
-  { id: "n3", title: "Monthly plan updated", description: "October tasks were marked complete.", createdAt: "2026-11-01T08:00:00Z", href: "/roadmap", read: true },
-];

@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import { TriangleAlert } from "lucide-react";
+import { BrandLogo } from "@/components/layout/brand-logo";
 import { GoogleSignInButton } from "@/features/auth/google-sign-in-button";
 import { signInErrorMessage } from "@/features/auth/sign-in-errors";
 import { getAuthConfig } from "@/server/auth/config";
@@ -21,12 +22,7 @@ export default async function LoginPage({
   return (
     <main className="flex min-h-dvh items-center justify-center bg-background px-4 py-12">
       <div className="flex w-full max-w-sm flex-col items-center text-center">
-        <span
-          className="flex size-11 items-center justify-center rounded-lg bg-primary text-base font-semibold text-primary-foreground"
-          aria-hidden
-        >
-          RL
-        </span>
+        <BrandLogo className="size-14" />
         <p className="mt-3 text-sm font-semibold">SEO Dashboard</p>
         <p className="text-xs text-muted-foreground">RightLeft Agency</p>
 

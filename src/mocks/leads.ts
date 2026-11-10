@@ -108,6 +108,8 @@ function addDays(iso: string, days: number): string {
   return new Date(Date.parse(iso) + days * DAY_MS).toISOString();
 }
 
+const SAMPLE_NAMES: Record<string, string> = { courtney: "Courtney", maya: "Maya Okafor" };
+
 /** Days between events, shortened so a recent lead's history ends by "today". */
 function stepGap(submittedAt: string, steps: number): number {
   const available = (LATEST_EVENT - Date.parse(submittedAt)) / DAY_MS;
@@ -116,11 +118,11 @@ function stepGap(submittedAt: string, steps: number): number {
 
 function buildActivity(id: string, stage: PipelineStage, submittedAt: string, assigneeId: string | null): LeadActivity[] {
   const log: LeadActivity[] = [
-    { id: `${id}-a0`, type: "created", description: "Lead created from website form", actorId: null, createdAt: submittedAt },
+    { id: `${id}-a0`, type: "created", description: "Lead created from website form", actorId: null, actorName: null, createdAt: submittedAt },
   ];
 
   if (stage === "spam") {
-    log.unshift({ id: `${id}-a1`, type: "stage-changed", description: "Moved to Spam by the AI filter", actorId: null, createdAt: addDays(submittedAt, 0) });
+    log.unshift({ id: `${id}-a1`, type: "stage-changed", description: "Moved to Spam by the AI filter", actorId: null, actorName: null, createdAt: addDays(submittedAt, 0) });
     return log;
   }
 
@@ -132,6 +134,7 @@ function buildActivity(id: string, stage: PipelineStage, submittedAt: string, as
       type: "stage-changed",
       description: `Stage changed from ${STAGE_LABEL[STAGE_PATH[step - 1] as PipelineStage]} to ${STAGE_LABEL[STAGE_PATH[step] as PipelineStage]}`,
       actorId: assigneeId,
+      actorName: SAMPLE_NAMES[assigneeId ?? ""] ?? null,
       createdAt: addDays(submittedAt, step * gap),
     });
   }
@@ -141,6 +144,7 @@ function buildActivity(id: string, stage: PipelineStage, submittedAt: string, as
       type: stage === "won" ? "deal-won" : "deal-lost",
       description: stage === "won" ? "Deal marked Won" : "Deal marked Lost",
       actorId: assigneeId,
+      actorName: SAMPLE_NAMES[assigneeId ?? ""] ?? null,
       createdAt: addDays(submittedAt, (STAGE_PATH.length + 1) * gap),
     });
   }
@@ -167,7 +171,7 @@ function buildLead(index: number, month: MonthKey): Lead {
 
   const notes: LeadNote[] =
     assigneeId && random.chance(0.6)
-      ? [{ id: `${id}-n0`, authorId: assigneeId, body: random.pick(NOTE_BODIES), createdAt: addDays(submittedAt, stepGap(submittedAt, 1)) }]
+      ? [{ id: `${id}-n0`, authorId: assigneeId, authorName: SAMPLE_NAMES[assigneeId] ?? "Unknown", body: random.pick(NOTE_BODIES), createdAt: addDays(submittedAt, stepGap(submittedAt, 1)) }]
       : [];
 
   return {

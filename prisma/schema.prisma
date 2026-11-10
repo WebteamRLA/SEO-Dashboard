@@ -24,17 +24,21 @@ model ApplicationSetting {
 // ---------------------------------------------------------------------------
 
 model User {
-  id            String    @id
-  name          String
-  email         String    @unique
-  emailVerified Boolean   @default(false) @map("email_verified")
-  image         String?
+  id                      String                   @id
+  name                    String
+  email                   String                   @unique
+  emailVerified           Boolean                  @default(false) @map("email_verified")
+  image                   String?
   /// "admin" | "manager" | "member". Set from the invite on every sign-in.
-  role          String    @default("member")
-  createdAt     DateTime  @default(now()) @map("created_at")
-  updatedAt     DateTime  @updatedAt @map("updated_at")
-  sessions      Session[]
-  accounts      Account[]
+  role                    String                   @default("member")
+  createdAt               DateTime                 @default(now()) @map("created_at")
+  updatedAt               DateTime                 @updatedAt @map("updated_at")
+  sessions                Session[]
+  accounts                Account[]
+  assignedLeads           Lead[]                   @relation("LeadAssignee")
+  leadNotes               LeadNote[]               @relation("LeadNoteAuthor")
+  leadEvents              LeadEvent[]              @relation("LeadEventActor")
+  notificationPreferences NotificationPreference[]
 
   @@map("user")
 }
@@ -105,36 +109,63 @@ model AccessInvite {
 // ---------------------------------------------------------------------------
 
 model Lead {
-  id            String        @id
+  id             String        @id
   /// "sheet" | "website-form" | "manual"
-  origin        String
+  origin         String
   /// When the enquiry arrived. Null when the sheet row has no date.
-  submittedAt   DateTime?     @map("submitted_at")
-  name          String?
-  email         String?
-  company       String?
+  submittedAt    DateTime?     @map("submitted_at")
+  name           String?
+  email          String?
+  company        String?
   /// How the person says they found RLA, in their words ("ChatGPT", "LinkedIn").
-  heardFrom     String?       @map("heard_from")
+  heardFrom      String?       @map("heard_from")
   /// The channel as RLA classifies it: Organic Search, AI Search, Referral,
   /// Paid Search, Social, Direct, Email, or Unknown.
-  channel       String        @default("Unknown")
-  budget        String?
-  services      String?
-  message       String?
+  channel        String        @default("Unknown")
+  budget         String?
+  services       String?
+  message        String?
   /// "new" | "contacted" | "meeting" | "proposal" | "won" | "lost" | "spam"
-  stage         String        @default("new")
+  stage          String        @default("new")
   /// The sheet's "Notes/Lost Reason" cell, verbatim.
-  pipelineNote  String?       @map("pipeline_note")
+  pipelineNote   String?       @map("pipeline_note")
   /// The sheet's "Close Date". Revenue is reported by this date.
-  wonOn         DateTime?     @map("won_on") @db.Date
+  wonOn          DateTime?     @map("won_on") @db.Date
   /// Identifies the sheet row so a re-import updates instead of duplicating.
-  sheetRowKey   String?       @unique @map("sheet_row_key")
+  sheetRowKey    String?       @unique @map("sheet_row_key")
   /// The row's original cells, kept so values can be re-mapped without re-importing.
-  sheetRow      Json?         @map("sheet_row")
-  sheetSyncedAt DateTime?     @map("sheet_synced_at")
-  payments      LeadPayment[]
-  createdAt     DateTime      @default(now()) @map("created_at")
-  updatedAt     DateTime      @updatedAt @map("updated_at")
+  sheetRow       Json?         @map("sheet_row")
+  sheetSyncedAt  DateTime?     @map("sheet_synced_at")
+  // Website-form leads (Fluent Forms webhook). Null for sheet leads.
+  phone          String?
+  formName       String?       @map("form_name")
+  /// The page the form was submitted on.
+  pageUrl        String?       @map("page_url")
+  /// The visitor's first page on the site, from the tracking snippet.
+  landingPage    String?       @map("landing_page")
+  /// The external site that sent the visitor, from the tracking snippet.
+  referrer       String?
+  utmSource      String?       @map("utm_source")
+  utmMedium      String?       @map("utm_medium")
+  utmCampaign    String?       @map("utm_campaign")
+  /// Identifies the form entry so a repeated webhook updates instead of duplicating.
+  formEntryKey   String?       @unique @map("form_entry_key")
+  /// The webhook's original fields, kept so values can be re-mapped later.
+  formPayload    Json?         @map("form_payload")
+  // Set in the dashboard. A sheet re-import never overwrites an edited lead.
+  /// A deal value typed in the dashboard. Takes precedence over the sheet's revenue cells.
+  dealValue      Decimal?      @map("deal_value") @db.Decimal(12, 2)
+  /// "ai" | "courtney": who classified the lead as spam.
+  spamFilteredBy String?       @map("spam_filtered_by")
+  assigneeId     String?       @map("assignee_id")
+  assignee       User?         @relation("LeadAssignee", fields: [assigneeId], references: [id], onDelete: SetNull)
+  /// When someone last changed the lead in the dashboard. Null: untouched since import.
+  editedAt       DateTime?     @map("edited_at")
+  notes          LeadNote[]
+  events         LeadEvent[]
+  payments       LeadPayment[]
+  createdAt      DateTime      @default(now()) @map("created_at")
+  updatedAt      DateTime      @updatedAt @map("updated_at")
 
   @@index([submittedAt])
   @@index([stage])
@@ -155,4 +186,52 @@ model LeadPayment {
 
   @@unique([leadId, sequence])
   @@map("lead_payment")
+}
+
+/// A note written on a lead in the dashboard.
+model LeadNote {
+  id         String   @id
+  leadId     String   @map("lead_id")
+  lead       Lead     @relation(fields: [leadId], references: [id], onDelete: Cascade)
+  authorId   String?  @map("author_id")
+  author     User?    @relation("LeadNoteAuthor", fields: [authorId], references: [id], onDelete: SetNull)
+  /// The author's name when they wrote it, so history survives removed access.
+  authorName String   @map("author_name")
+  body       String
+  createdAt  DateTime @default(now()) @map("created_at")
+
+  @@index([leadId, createdAt])
+  @@map("lead_note")
+}
+
+/// One entry in a lead's history: a stage change, a note, an edit.
+model LeadEvent {
+  id          String   @id
+  leadId      String   @map("lead_id")
+  lead        Lead     @relation(fields: [leadId], references: [id], onDelete: Cascade)
+  /// "stage-changed" | "note-added" | "deal-won" | "deal-lost" | "details-updated"
+  type        String
+  description String
+  /// Null for the system.
+  actorId     String?  @map("actor_id")
+  actor       User?    @relation("LeadEventActor", fields: [actorId], references: [id], onDelete: SetNull)
+  actorName   String?  @map("actor_name")
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  @@index([leadId, createdAt])
+  @@map("lead_event")
+}
+
+/// One person's choice for one notification event and channel.
+model NotificationPreference {
+  userId    String   @map("user_id")
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  /// An id from the notification events list, e.g. "new-lead".
+  eventId   String   @map("event_id")
+  email     Boolean
+  inApp     Boolean  @map("in_app")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@id([userId, eventId])
+  @@map("notification_preference")
 }

@@ -19,7 +19,6 @@ import { DealValueDialog } from "./deal-value-dialog";
 import { EditContactDialog } from "./edit-contact-dialog";
 import { parseDealValue } from "./lead-logic";
 import { useLeads } from "./leads-store";
-import { PreviewChangesNote } from "./preview-changes-note";
 import { SpamTag } from "./spam-tag";
 
 const UNASSIGNED = "unassigned";
@@ -74,7 +73,7 @@ function Fields({ items }: { items: readonly { label: string; value: string | nu
 }
 
 export function LeadDetail({ leadId }: { leadId: string }) {
-  const { getLead, team, moveLead, updateLead, addNote } = useLeads();
+  const { getLead, moveLead, updateLead, addNote } = useLeads();
   const lead = getLead(leadId);
   const [editOpen, setEditOpen] = useState(false);
   const [wonOpen, setWonOpen] = useState(false);
@@ -95,8 +94,6 @@ export function LeadDetail({ leadId }: { leadId: string }) {
     );
   }
 
-  const authorName = (id: string | null) =>
-    id === null ? "System" : (team.find((member) => member.id === id)?.name ?? "Unknown user");
 
   function changeStage(next: string) {
     const stage = PIPELINE_STAGES.find((item) => item === next);
@@ -128,7 +125,6 @@ export function LeadDetail({ leadId }: { leadId: string }) {
           </>
         }
       />
-      <PreviewChangesNote />
         <div className="grid items-start gap-5 lg:grid-cols-2">
           <div className="flex flex-col gap-5">
             <Section
@@ -186,7 +182,7 @@ export function LeadDetail({ leadId }: { leadId: string }) {
                   <AssigneeField lead={lead} />
                 </div>
                 <DealValueField key={lead.dealValue ?? "none"} lead={lead} />
-                <NotesField lead={lead} authorName={authorName} onAdd={(body) => addNote(lead.id, body)} />
+                <NotesField lead={lead} onAdd={(body) => addNote(lead.id, body)} />
               </div>
             </Section>
             <Section title="Activity History">
@@ -200,7 +196,7 @@ export function LeadDetail({ leadId }: { leadId: string }) {
                       <li key={entry.id} className="flex flex-col gap-0.5 border-b border-border py-2.5 first:pt-0 last:border-b-0 last:pb-0">
                         <p className="text-sm">{entry.description}</p>
                         <p className="text-xs text-muted-foreground">
-                          {authorName(entry.actorId)} · {formatDateTime(entry.createdAt)}
+                          {entry.actorName ?? "System"} · {formatDateTime(entry.createdAt)}
                         </p>
                       </li>
                     ))}
@@ -395,11 +391,9 @@ function DealValueField({ lead }: { lead: Lead }) {
 
 function NotesField({
   lead,
-  authorName,
   onAdd,
 }: {
   lead: Lead;
-  authorName: (id: string | null) => string;
   onAdd: (body: string) => void;
 }) {
   const id = useId();
@@ -453,7 +447,7 @@ function NotesField({
                 <li key={note.id} className="border-b border-border py-2.5 last:border-b-0">
                   <p className="text-sm whitespace-pre-wrap">{note.body}</p>
                   <p className="mt-0.5 text-xs text-muted-foreground">
-                    {authorName(note.authorId)} · {formatDateTime(note.createdAt)}
+                    {note.authorName} · {formatDateTime(note.createdAt)}
                   </p>
                 </li>
               ))}

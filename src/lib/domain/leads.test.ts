@@ -13,7 +13,7 @@ import {
   leadsInMonth,
 } from "./leads";
 
-const context = { actorId: "courtney", now: "2026-11-06T10:00:00Z", eventId: "1" };
+const context = { actorId: "courtney", actorName: "Courtney", now: "2026-11-06T10:00:00Z", eventId: "1" };
 
 function lead(overrides: Partial<Lead> = {}): Lead {
   return {

@@ -74,3 +74,36 @@ describe("toLead", () => {
     );
   });
 });
+
+describe("toLead with dashboard edits", () => {
+  it("prefers a deal value typed in the dashboard over the sheet's revenue", () => {
+    const lead = toLead(row({ dealValue: { toString: () => "4200.50" }, payments: [{ sequence: 1, amount: { toString: () => "1000" }, commission: null }] }));
+    expect(lead.dealValue).toBe(4200.5);
+  });
+
+  it("falls back to the sheet's revenue when no value was typed", () => {
+    const lead = toLead(row({ dealValue: null, payments: [{ sequence: 1, amount: { toString: () => "1000" }, commission: null }] }));
+    expect(lead.dealValue).toBe(1000);
+  });
+
+  it("maps notes and history newest first, with the names stored at the time", () => {
+    const lead = toLead(
+      row({
+        assigneeId: "user-1",
+        spamFilteredBy: "courtney",
+        notes: [
+          { id: "n1", authorId: null, authorName: "Former colleague", body: "First", createdAt: new Date("2026-11-01T10:00:00Z") },
+          { id: "n2", authorId: "user-1", authorName: "Courtney", body: "Second", createdAt: new Date("2026-11-02T10:00:00Z") },
+        ],
+        events: [
+          { id: "e1", type: "stage-changed", description: "Stage changed from New to Contacted", actorId: "user-1", actorName: "Courtney", createdAt: new Date("2026-11-01T09:00:00Z") },
+          { id: "e2", type: "something-unknown", description: "Odd", actorId: null, actorName: null, createdAt: new Date("2026-11-03T09:00:00Z") },
+        ],
+      }),
+    );
+    expect(lead.assigneeId).toBe("user-1");
+    expect(lead.spamFilteredBy).toBe("courtney");
+    expect(lead.notes.map((note) => [note.id, note.authorName])).toEqual([["n2", "Courtney"], ["n1", "Former colleague"]]);
+    expect(lead.activity.map((entry) => [entry.id, entry.type])).toEqual([["e2", "details-updated"], ["e1", "stage-changed"]]);
+  });
+});

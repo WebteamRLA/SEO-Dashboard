@@ -30,7 +30,9 @@ export interface OverviewProps {
   periodText: string;
   months: MonthKey[];
   taskCounts: TaskCounts;
-  /** Null until the strategy roadmap has a live source. */
+  /** Calendar year the yearly figure covers, such as "2026". */
+  planYear: string;
+  /** Share of SEO tasks in Teamwork completed. Null when Teamwork is unavailable. */
   yearlyPlan: Progress | null;
   planProgress: Progress | null;
   tasksByMonth: { month: MonthKey; completed: number; open: number }[];
@@ -43,8 +45,7 @@ export interface OverviewProps {
   }[];
 }
 
-const ROADMAP_NOT_CONNECTED =
-  "Not connected yet. Roadmap progress appears once roadmap items are marked in Teamwork.";
+const PLAN_UNAVAILABLE = "Teamwork is not available right now, so progress cannot be calculated.";
 
 const WORK_SERIES: ChartSeries[] = [
   { key: "completed", label: "Completed", slot: 1 },
@@ -67,6 +68,7 @@ export function OverviewView({
   periodText,
   months,
   taskCounts,
+  planYear,
   yearlyPlan,
   planProgress,
   tasksByMonth,
@@ -99,7 +101,8 @@ export function OverviewView({
   const summary = buildMonthSummary({
     periodText,
     tasks: taskCounts,
-    planProgress,
+    // Plan progress is the task completion rate, which the tasks line already states.
+    planProgress: null,
     leads: stats.metrics,
     sources: stats.sources,
   });
@@ -125,12 +128,12 @@ export function OverviewView({
           <MetricCard
             label="Plan progress"
             value={`${planProgress.percent}%`}
-            detail={`${planProgress.completed} of ${planProgress.total} roadmap items complete in this period`}
+            detail={`${formatNumber(planProgress.completed)} of ${formatNumber(planProgress.total)} SEO tasks done in this period`}
             icon={Target}
             footer={<ProgressBar progress={planProgress} label="Plan progress" />}
           />
         ) : (
-          <MetricCard label="Plan progress" value="—" detail={ROADMAP_NOT_CONNECTED} icon={Target} />
+          <MetricCard label="Plan progress" value="—" detail={PLAN_UNAVAILABLE} icon={Target} />
         )}
         <MetricCard
           label="Total leads (excl. spam)"
@@ -166,14 +169,16 @@ export function OverviewView({
               <div className="flex items-baseline justify-between gap-2">
                 <p className="text-2xl font-semibold tracking-tight tabular-nums">{yearlyPlan.percent}%</p>
                 <p className="text-xs text-muted-foreground">
-                  {formatNumber(yearlyPlan.completed)} of {formatNumber(yearlyPlan.total)} items complete
+                  {formatNumber(yearlyPlan.completed)} of {formatNumber(yearlyPlan.total)} SEO tasks done
                 </p>
               </div>
               <ProgressBar progress={yearlyPlan} label="Yearly strategy progress" />
-              <p className="text-xs text-muted-foreground">The whole year&apos;s plan, not only the selected period.</p>
+              <p className="text-xs text-muted-foreground">
+                All SEO tasks in Teamwork for {planYear}, not only the selected period.
+              </p>
             </>
           ) : (
-            <p className="text-sm text-muted-foreground">{ROADMAP_NOT_CONNECTED}</p>
+            <p className="text-sm text-muted-foreground">{PLAN_UNAVAILABLE}</p>
           )}
           <PeriodLink
             href="/roadmap"

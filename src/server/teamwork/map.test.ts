@@ -47,6 +47,7 @@ describe("mapTeamworkTasks", () => {
       month: "2026-11",
       dueDate: "2026-11-11",
       completedDate: null,
+      completedAt: null,
     });
     expect(people).toEqual({ "152346": "Courtney Wasserburger" });
   });

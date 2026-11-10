@@ -10,7 +10,7 @@ export default function SettingsLayout({ children }: { children: ReactNode }) {
     <PageBody>
       <PageHeader
         title="Settings"
-        description="Connections, website forms, team access, notification preferences, and the delivery roadmap."
+        description="Team access, notification preferences, and the delivery roadmap."
       />
       <SettingsNav />
       {children}

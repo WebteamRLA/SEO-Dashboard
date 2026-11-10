@@ -6,7 +6,9 @@ import {
   countTasksByCategory,
   resolveRoadmap,
   taskInPeriod,
+  taskProgress,
   toProgress,
+  yearRange,
 } from "./progress";
 
 function task(id: string, status: Task["status"], overrides: Partial<Task> = {}): Task {
@@ -114,5 +116,24 @@ describe("taskInPeriod", () => {
 
   it("never counts a completed task without a completion date", () => {
     expect(taskInPeriod(task("e", "completed", { completedDate: null, dueDate: "2026-11-05" }), range)).toBe(false);
+  });
+});
+
+describe("taskProgress", () => {
+  it("is the completed share of the tasks in the period", () => {
+    const tasks = [
+      task("a", "completed", { completedDate: "2026-11-03" }),
+      task("b", "todo", { dueDate: "2026-11-20" }),
+      task("c", "in-progress", { dueDate: "2026-11-25" }),
+      task("d", "completed", { completedDate: "2026-10-30" }),
+    ];
+    expect(taskProgress(tasks, { from: "2026-11-01", to: "2026-11-30" })).toEqual({ completed: 1, total: 3, percent: 33 });
+    expect(taskProgress(tasks, yearRange("2026-11-10"))).toEqual({ completed: 2, total: 4, percent: 50 });
+  });
+});
+
+describe("yearRange", () => {
+  it("covers the whole calendar year of the date", () => {
+    expect(yearRange("2026-11-10")).toEqual({ from: "2026-01-01", to: "2026-12-31" });
   });
 });

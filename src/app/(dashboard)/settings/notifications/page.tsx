@@ -11,7 +11,7 @@ export default async function NotificationsPage() {
       <div>
         <h2 id="notifications-heading" className="text-sm font-semibold">Notifications</h2>
         <p className="text-sm text-muted-foreground">
-          Choose how you hear about each event. Changes stay on this page until notifications are connected.
+          Choose how you hear about each event. Your choices are saved for your account. New-lead emails go out when a website form sends a lead.
         </p>
       </div>
       <NotificationPreferences initialPreferences={preferences} />

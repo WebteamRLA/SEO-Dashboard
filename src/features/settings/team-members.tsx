@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, type FormEvent } from "react";
+import { useState, useTransition, type FormEvent } from "react";
 import { toast } from "sonner";
 import { ConfirmDialog } from "@/components/data/confirm-dialog";
 import { DataTable, type Column } from "@/components/data/data-table";
@@ -17,21 +17,67 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import type { TeamMember, TeamRole } from "@/lib/types";
-import { MEMBER_STATUS_META, INVITABLE_ROLES, isInvitableRole } from "./settings-meta";
+import { ROLE_LABELS, ROLES, type AccessMember, type Role } from "@/lib/types/auth";
+import { inviteMember, removeMember, resendInvite, type TeamActionResult } from "@/server/team/actions";
+import { MEMBER_STATUS_META } from "./settings-meta";
 
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
-export function TeamMembers({ initialMembers }: { initialMembers: TeamMember[] }) {
-  // Local state only. Nothing is saved or sent, and a reload restores the sample list.
-  const [members, setMembers] = useState<TeamMember[]>(initialMembers);
-  const [inviteOpen, setInviteOpen] = useState(false);
-  const [pendingRemoval, setPendingRemoval] = useState<TeamMember | null>(null);
+// Only admin is enforced today (Team & Access changes). Manager and member differ
+// once role-based permissions arrive.
+const ROLE_HINTS: Record<Role, string> = {
+  admin: "Can use the whole dashboard and invite or remove people.",
+  manager: "Can use the dashboard. Cannot invite or remove people.",
+  member: "Can use the dashboard. Cannot invite or remove people.",
+};
 
-  const columns: Column<TeamMember>[] = [
-    { id: "name", header: "Member", cell: (member) => <span className="font-medium">{member.name}</span>, sortValue: (member) => member.name },
+function showResult(result: TeamActionResult) {
+  if (result.status === "success") toast.success(result.message);
+  else if (result.status === "warning") toast.warning(result.message);
+  else toast.error(result.message);
+}
+
+export function TeamMembers({
+  members,
+  currentEmail,
+  canManage,
+}: {
+  members: AccessMember[];
+  currentEmail: string;
+  canManage: boolean;
+}) {
+  const [inviteOpen, setInviteOpen] = useState(false);
+  const [pendingRemoval, setPendingRemoval] = useState<AccessMember | null>(null);
+  const [busyEmail, setBusyEmail] = useState<string | null>(null);
+  const [, startTransition] = useTransition();
+
+  function run(email: string, action: () => Promise<TeamActionResult>) {
+    setBusyEmail(email);
+    startTransition(async () => {
+      try {
+        showResult(await action());
+      } catch {
+        toast.error("Something went wrong. Try again.");
+      } finally {
+        setBusyEmail(null);
+      }
+    });
+  }
+
+  const columns: Column<AccessMember>[] = [
+    {
+      id: "name",
+      header: "Member",
+      cell: (member) => (
+        <span className="font-medium">
+          {member.name ?? member.email}
+          {member.email === currentEmail ? <span className="ml-1.5 text-xs font-normal text-muted-foreground">(you)</span> : null}
+        </span>
+      ),
+      sortValue: (member) => (member.name ?? member.email).toLowerCase(),
+    },
     { id: "email", header: "Email", hideBelow: "md", cell: (member) => <span className="text-muted-foreground">{member.email}</span>, sortValue: (member) => member.email },
-    { id: "role", header: "Role", cell: (member) => member.role, sortValue: (member) => member.role },
+    { id: "role", header: "Role", cell: (member) => ROLE_LABELS[member.role], sortValue: (member) => member.role },
     {
       id: "status",
       header: "Status",
@@ -45,40 +91,38 @@ export function TeamMembers({ initialMembers }: { initialMembers: TeamMember[] }
       id: "actions",
       header: "Access",
       align: "right",
-      cell: (member) =>
-        member.role === "Owner" ? (
-          <span className="text-xs text-muted-foreground">Owner cannot be removed</span>
-        ) : (
-          <Button
-            variant="ghost"
-            size="sm"
-            aria-label={`Remove ${member.name}`}
-            onClick={() => setPendingRemoval(member)}
-          >
-            Remove
-          </Button>
-        ),
+      cell: (member) => {
+        if (member.bootstrap) return <span className="text-xs text-muted-foreground">Admin set in server settings</span>;
+        if (member.email === currentEmail) return <span className="text-xs text-muted-foreground">You</span>;
+        if (!canManage) return null;
+        const busy = busyEmail === member.email;
+        return (
+          <div className="flex justify-end gap-1">
+            {member.status === "invited" ? (
+              <Button
+                variant="ghost"
+                size="sm"
+                disabled={busy}
+                aria-label={`Resend invite to ${member.email}`}
+                onClick={() => run(member.email, () => resendInvite(member.email))}
+              >
+                Resend invite
+              </Button>
+            ) : null}
+            <Button
+              variant="ghost"
+              size="sm"
+              disabled={busy}
+              aria-label={`Remove ${member.name ?? member.email}`}
+              onClick={() => setPendingRemoval(member)}
+            >
+              Remove
+            </Button>
+          </div>
+        );
+      },
     },
   ];
-
-  function handleInvited(email: string, role: TeamRole) {
-    // Date.now is read in an event handler, never during render.
-    const id = `local-${Date.now()}`;
-    setMembers((current) => [
-      ...current,
-      { id, name: email, email, role, title: "", status: "invited" },
-    ]);
-    setInviteOpen(false);
-    toast(`${email} was added to this preview only. No invitation was sent and nothing is saved.`);
-  }
-
-  function confirmRemoval() {
-    if (!pendingRemoval || pendingRemoval.role === "Owner") return;
-    const removed = pendingRemoval;
-    setMembers((current) => current.filter((member) => member.id !== removed.id));
-    setPendingRemoval(null);
-    toast(`${removed.name} was removed from this preview only.`);
-  }
 
   return (
     <section aria-labelledby="team-heading" className="flex flex-col gap-3">
@@ -86,53 +130,57 @@ export function TeamMembers({ initialMembers }: { initialMembers: TeamMember[] }
         <div>
           <h2 id="team-heading" className="text-sm font-semibold">Team and access</h2>
           <p className="text-sm text-muted-foreground">
-            Who can open this dashboard. Changes here stay on this page until accounts are connected.
+            {canManage
+              ? "Who can sign in to this dashboard. Invited people sign in with the Google account for their email."
+              : "Who can sign in to this dashboard. Only admins can invite or remove people."}
           </p>
         </div>
-        <Button onClick={() => setInviteOpen(true)}>Invite member</Button>
+        {canManage ? <Button onClick={() => setInviteOpen(true)}>Invite member</Button> : null}
       </div>
 
       <DataTable
         caption="Team members and their roles"
         columns={columns}
         rows={members}
-        getRowId={(member) => member.id}
+        getRowId={(member) => member.email}
         defaultSort={{ columnId: "name", direction: "asc" }}
       />
 
-      <InviteDialog open={inviteOpen} onOpenChange={setInviteOpen} onInvite={handleInvited} />
+      {canManage ? <InviteDialog open={inviteOpen} onOpenChange={setInviteOpen} /> : null}
 
       <ConfirmDialog
         open={pendingRemoval !== null}
         onOpenChange={(open) => {
           if (!open) setPendingRemoval(null);
         }}
-        title={`Remove ${pendingRemoval?.name ?? "this member"}?`}
-        description="This only removes them from the list on this page. Nothing changes for the real team."
+        title={`Remove ${pendingRemoval?.name ?? pendingRemoval?.email ?? "this member"}?`}
+        description={
+          pendingRemoval?.status === "active"
+            ? "They are signed out now and can no longer sign in. You can invite them again later."
+            : "Their invite is cancelled, so they cannot sign in. You can invite them again later."
+        }
         confirmLabel="Remove"
-        onConfirm={confirmRemoval}
+        onConfirm={() => {
+          const member = pendingRemoval;
+          setPendingRemoval(null);
+          if (member) run(member.email, () => removeMember(member.email));
+        }}
       />
     </section>
   );
 }
 
-function InviteDialog({
-  open,
-  onOpenChange,
-  onInvite,
-}: {
-  open: boolean;
-  onOpenChange: (open: boolean) => void;
-  onInvite: (email: string, role: TeamRole) => void;
-}) {
+function InviteDialog({ open, onOpenChange }: { open: boolean; onOpenChange: (open: boolean) => void }) {
   const [email, setEmail] = useState("");
-  const [role, setRole] = useState<TeamRole>("Member");
+  const [role, setRole] = useState<Role>("member");
   const [error, setError] = useState<string | null>(null);
+  const [pending, startTransition] = useTransition();
 
   function handleOpenChange(next: boolean) {
+    if (pending) return;
     if (!next) {
       setEmail("");
-      setRole("Member");
+      setRole("member");
       setError(null);
     }
     onOpenChange(next);
@@ -145,8 +193,23 @@ function InviteDialog({
       setError("Enter an email address, such as name@example.com.");
       return;
     }
-    onInvite(trimmed, role);
-    handleOpenChange(false);
+    startTransition(async () => {
+      try {
+        const result = await inviteMember({ email: trimmed, role });
+        if (result.status === "error") {
+          // Keep the dialog open so the address can be corrected.
+          setError(result.message);
+          return;
+        }
+        showResult(result);
+        setEmail("");
+        setRole("member");
+        setError(null);
+        onOpenChange(false);
+      } catch {
+        setError("Something went wrong. Try again.");
+      }
+    });
   }
 
   return (
@@ -156,7 +219,7 @@ function InviteDialog({
           <DialogHeader>
             <DialogTitle>Invite member</DialogTitle>
             <DialogDescription>
-              Adds the person to this preview only. No email is sent.
+              They get an email with a sign-in link, and can sign in with the Google account for this address.
             </DialogDescription>
           </DialogHeader>
 
@@ -167,6 +230,7 @@ function InviteDialog({
               type="email"
               autoComplete="off"
               value={email}
+              disabled={pending}
               onChange={(event) => {
                 setEmail(event.target.value);
                 if (error) setError(null);
@@ -185,28 +249,32 @@ function InviteDialog({
             <Label htmlFor="invite-role">Role</Label>
             <Select
               value={role}
+              disabled={pending}
               onValueChange={(value) => {
-                if (isInvitableRole(value)) setRole(value);
+                if ((ROLES as readonly string[]).includes(value)) setRole(value as Role);
               }}
             >
               <SelectTrigger id="invite-role" className="w-full">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                {INVITABLE_ROLES.map((option) => (
+                {ROLES.map((option) => (
                   <SelectItem key={option} value={option}>
-                    {option}
+                    {ROLE_LABELS[option]}
                   </SelectItem>
                 ))}
               </SelectContent>
             </Select>
+            <p className="text-xs text-muted-foreground">{ROLE_HINTS[role]}</p>
           </div>
 
           <DialogFooter>
-            <Button type="button" variant="outline" onClick={() => handleOpenChange(false)}>
+            <Button type="button" variant="outline" disabled={pending} onClick={() => handleOpenChange(false)}>
               Cancel
             </Button>
-            <Button type="submit">Add to preview</Button>
+            <Button type="submit" disabled={pending}>
+              {pending ? "Sending…" : "Send invite"}
+            </Button>
           </DialogFooter>
         </form>
       </DialogContent>

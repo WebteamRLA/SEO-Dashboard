@@ -14,7 +14,6 @@ import { formatDate } from "@/lib/format";
 import { LEAD_SOURCES, PIPELINE_STAGES, type Lead } from "@/lib/types";
 import { DATE_PRESETS, filterLeads } from "./lead-logic";
 import { useLeads } from "./leads-store";
-import { PreviewChangesNote } from "./preview-changes-note";
 import { SpamTag } from "./spam-tag";
 
 const SOURCE_OPTIONS = LEAD_SOURCES.map((source) => ({ value: source, label: source }));
@@ -110,7 +109,6 @@ export function LeadInbox({ referenceDate }: { referenceDate: string }) {
           </Button>
         }
       />
-        <PreviewChangesNote />
         <FilterBar>
           <SearchInput value={search} onChange={setSearch} placeholder="Search name, email or company" />
           <FilterSelect label="Filter by source" allLabel="All sources" value={source} options={SOURCE_OPTIONS} onChange={setSource} />

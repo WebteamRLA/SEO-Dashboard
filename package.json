@@ -18,7 +18,8 @@
     "db:migrate": "prisma migrate dev",
     "db:deploy": "prisma migrate deploy",
     "check:secrets": "node scripts/check-worker-secrets.mjs",
-    "import:leads": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/import-leads.mjs"
+    "import:leads": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/import-leads.mjs",
+    "check:google": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/check-google.mjs"
   },
   "dependencies": {
     "@dnd-kit/core": "^6.3.1",

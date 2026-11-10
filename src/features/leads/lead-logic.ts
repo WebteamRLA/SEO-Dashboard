@@ -52,8 +52,14 @@ export interface StageColumn {
 }
 
 /** One column per stage, in pipeline order. Leads keep their input order. */
+/** Board column order: Spam sits first so triage happens before the real pipeline. */
+export const BOARD_STAGES: readonly PipelineStage[] = [
+  "spam",
+  ...PIPELINE_STAGES.filter((stage) => stage !== "spam"),
+];
+
 export function groupByStage(leads: readonly Lead[]): StageColumn[] {
-  return PIPELINE_STAGES.map((stage) => {
+  return BOARD_STAGES.map((stage) => {
     const inStage = leads.filter((lead) => lead.stage === stage);
     return {
       stage,

@@ -98,6 +98,7 @@ export function computeRevenueBySource(leads: readonly Lead[]): RevenueBySource[
 
 export interface LeadChangeContext {
   actorId: string;
+  actorName: string;
   now: ISODateTime;
   /** Unique suffix for generated activity ids. */
   eventId: string;
@@ -112,6 +113,7 @@ function appendActivity(
     {
       id: `activity-${lead.id}-${context.eventId}`,
       actorId: context.actorId,
+      actorName: context.actorName,
       createdAt: context.now,
       ...entry,
     },
@@ -162,6 +164,7 @@ export function applyNote(lead: Lead, body: string, context: LeadChangeContext):
       {
         id: `note-${lead.id}-${context.eventId}`,
         authorId: context.actorId,
+        authorName: context.actorName,
         body: trimmed,
         createdAt: context.now,
       },

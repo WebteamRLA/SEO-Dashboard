@@ -15,7 +15,7 @@ export function AppShell({
 }: {
   user: SessionUser;
   today: ISODate;
-  notifications: AppNotification[];
+  notifications: Promise<AppNotification[]>;
   children: ReactNode;
 }) {
   const [menuOpen, setMenuOpen] = useState(false);

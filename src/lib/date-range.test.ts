@@ -17,13 +17,19 @@ const TODAY = "2026-11-10";
 
 describe("presetRange", () => {
   it("covers each preset relative to today", () => {
-    expect(presetRange("this-month", TODAY)).toEqual({ from: "2026-11-01", to: "2026-11-10" });
+    expect(presetRange("this-month", TODAY)).toEqual({ from: "2026-11-01", to: "2026-11-30" });
     expect(presetRange("last-month", TODAY)).toEqual({ from: "2026-10-01", to: "2026-10-31" });
     expect(presetRange("last-7-days", TODAY)).toEqual({ from: "2026-11-04", to: "2026-11-10" });
     expect(presetRange("last-30-days", TODAY)).toEqual({ from: "2026-10-12", to: "2026-11-10" });
     expect(presetRange("last-90-days", TODAY)).toEqual({ from: "2026-08-13", to: "2026-11-10" });
-    expect(presetRange("this-quarter", TODAY)).toEqual({ from: "2026-10-01", to: "2026-11-10" });
+    expect(presetRange("this-quarter", TODAY)).toEqual({ from: "2026-10-01", to: "2026-12-31" });
     expect(presetRange("year-to-date", TODAY)).toEqual({ from: "2026-01-01", to: "2026-11-10" });
+  });
+
+  it("covers the whole month and quarter, including leap-year February", () => {
+    expect(presetRange("this-month", "2028-02-03")).toEqual({ from: "2028-02-01", to: "2028-02-29" });
+    expect(presetRange("this-month", "2026-12-31")).toEqual({ from: "2026-12-01", to: "2026-12-31" });
+    expect(presetRange("this-quarter", "2026-02-10")).toEqual({ from: "2026-01-01", to: "2026-03-31" });
   });
 
   it("handles year boundaries and leap years", () => {
@@ -53,7 +59,7 @@ describe("resolvePeriod", () => {
   });
 
   it("falls back to this month for anything invalid", () => {
-    const fallback = { preset: "this-month", range: { from: "2026-11-01", to: "2026-11-10" } };
+    const fallback = { preset: "this-month", range: { from: "2026-11-01", to: "2026-11-30" } };
     for (const params of [
       {},
       { range: "forever" },
@@ -118,7 +124,7 @@ describe("formatting", () => {
   });
 
   it("describes a period for subtitles", () => {
-    expect(describePeriod(resolvePeriod({ range: "this-month" }, TODAY))).toBe("This month · Nov 1 – 10, 2026");
+    expect(describePeriod(resolvePeriod({ range: "this-month" }, TODAY))).toBe("This month · Nov 1 – 30, 2026");
     expect(describePeriod(resolvePeriod({ from: "2026-10-03", to: "2026-10-09" }, TODAY))).toBe("Oct 3 – 9, 2026");
   });
 
