@@ -63,6 +63,17 @@ migrated with old code:
 - Migrations use the direct connection. The Neon pooler runs in transaction mode, which does not suit them.
 - Migrations must be backward compatible, so the previous release keeps working if a deploy is rolled back.
 
+## Building on Vercel
+
+`vercel.json` runs `scripts/prisma-generate-node.mjs` before `next build`. It regenerates the Prisma
+client for the Node.js runtime; the schema keeps `runtime = "workerd"` for Cloudflare.
+
+The workerd client imports its query compiler as a `.wasm` module, so every route using Prisma
+traces almost all of `node_modules` (about 293 MB per route, see below). Vercel caps a function at
+250 MB, and Hobby allows 12 functions per deploy, so those deploys failed. With the Node.js client a
+route traces about 9 MB and the build has 4 functions. Workers cannot compile WebAssembly from bytes
+at runtime, which is why Cloudflare keeps the workerd client.
+
 ## Prisma on Workers
 
 - Create a client per request with `createDb()`. A shared global client makes later requests fail.
