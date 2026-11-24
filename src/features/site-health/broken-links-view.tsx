@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import { Panel } from "@/components/data/panel";
 import { DataTable, type Column } from "@/components/data/data-table";
 import { FilterBar, FilterSelect, ALL } from "@/components/data/filter-select";
 import { SearchInput } from "@/components/data/search-input";
@@ -15,14 +16,14 @@ const COLUMNS: Column<BrokenLink>[] = [
   {
     id: "url",
     header: "URL",
-    cell: (link) => <span className="font-medium break-all">{link.url}</span>,
+    cell: (link) => <span className="font-semibold text-ink break-all">{link.url}</span>,
     sortValue: (link) => link.url,
   },
   {
     id: "foundOn",
     header: "Found on",
     hideBelow: "sm",
-    cell: (link) => <span className="break-all text-muted-foreground">{link.foundOn}</span>,
+    cell: (link) => <span className="break-all text-ink-quiet">{link.foundOn}</span>,
     sortValue: (link) => link.foundOn,
   },
   {
@@ -70,8 +71,13 @@ export function BrokenLinksView({ links }: { links: BrokenLink[] }) {
   }, [links, query, status]);
 
   return (
-    <>
-      <FilterBar>
+    <Panel
+      id="links"
+      title="Broken links"
+      description="Links that return an error, with the page they were found on"
+      flush
+      toolbar={
+        <FilterBar>
         <SearchInput value={query} onChange={setQuery} placeholder="Search by URL" />
         <FilterSelect
           label="Filter by status"
@@ -80,9 +86,11 @@ export function BrokenLinksView({ links }: { links: BrokenLink[] }) {
           options={STATUS_OPTIONS}
           onChange={setStatus}
         />
-      </FilterBar>
-
+        </FilterBar>
+      }
+    >
       <DataTable
+        bare
         caption="Broken links found on the site, with their issue status"
         columns={COLUMNS}
         rows={filtered}
@@ -95,6 +103,6 @@ export function BrokenLinksView({ links }: { links: BrokenLink[] }) {
             : "Try a different search or status."
         }
       />
-    </>
+    </Panel>
   );
 }

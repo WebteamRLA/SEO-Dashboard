@@ -11,6 +11,26 @@ sources. Search Console counts days in Pacific Time; GA4 uses the property's tim
 Search Console figures include the newest, not-yet-final days, so the most recent
 day or two can still shift slightly.
 
+## Traffic & SEO pages
+
+The three pages under **Traffic & SEO** use the same connection and the same
+selected period (ending yesterday), each compared with the same number of days before it:
+
+- **SEO Overview**: Search Console clicks, impressions, CTR, average position; GA4
+  organic sessions; organic clicks over time; top landing pages (Search Console pages
+  joined with GA4 Organic Search landing pages on the path, ignoring a trailing slash).
+- **Search Performance**: the four Search Console metrics, a chart for each, and the
+  top 250 queries by clicks with position change against the previous period.
+  Google hides rare queries for privacy, so the query rows add up to less than the totals.
+- **Visitors**: GA4 sessions, users, organic and referral sessions; all vs organic
+  sessions over time; sessions by default channel group. GA4 estimates session counts,
+  so daily or per-channel figures can add up to slightly more or less than the total.
+
+Charts show one point per day for periods up to 92 days, and one per month beyond that.
+If a source has no data for the previous period (for example, before the property
+existed), the cards say so instead of showing a change. Code: `src/server/google/analytics.ts`
+(pure, tested), `src/lib/data/google.ts`, `src/features/traffic/`.
+
 ## How it connects
 
 One Google Cloud **service account** reads both sources. There is no "Sign in with
@@ -68,4 +88,4 @@ The Overview panels are switched off until the service account has been given ac
 in Search Console and GA4 (steps 4 and 5). The code is kept and tested: to switch the
 panels back on, render `<GooglePanels google={google} />` in
 `src/features/overview/overview-view.tsx` again, with `getGoogleOverview(range, today)`
-loaded in `src/app/(dashboard)/overview/page.tsx`.
+loaded in `src/app/(dashboard)/(lead-pages)/overview/page.tsx`.

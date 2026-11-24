@@ -1,27 +1,23 @@
 "use client";
 
 import { PeriodLink } from "@/components/layout/period-link";
-import { useMemo } from "react";
-import { ArrowRight, CheckCircle2, DollarSign, Inbox, Search, Target, Users } from "lucide-react";
-import { ChartCard } from "@/components/charts/chart-card";
-import { BarTrendChart, type ChartSeries } from "@/components/charts/charts";
+import { useMemo, type ReactNode } from "react";
+import { ColumnChart } from "@/components/charts/column-chart";
 import { RankedBars } from "@/components/charts/ranked-bars";
 import { MetricCard, MetricGrid } from "@/components/data/metric-card";
+import { Legend, LegendItem, PageSection, Panel, PanelBlock, PanelColumns } from "@/components/data/panel";
 import { ProgressBar } from "@/components/data/progress-bar";
 import { StatusBadge } from "@/components/data/status-badge";
-import { EmptyState } from "@/components/data/empty-state";
+import { ExternalLink } from "@/components/data/external-link";
 import { useLeads } from "@/features/leads/leads-store";
-import {
-  computeLeadMetrics,
-  computeRevenueSummary,
-  countLeadsBySource,
-  STAGE_META,
-} from "@/lib/domain/leads";
+import { computeLeadMetrics, computeRevenueSummary, countLeadsBySource, STAGE_META } from "@/lib/domain/leads";
+import type { GoogleOverview } from "@/lib/data/google";
 import { isWithin, monthsInRange, type DateRange } from "@/lib/date-range";
 import { toMonthKey } from "@/lib/month";
 import { formatCurrency, formatDate, formatMonthShort, formatNumber } from "@/lib/format";
-import type { MonthKey, Progress, TaskCounts } from "@/lib/types";
+import type { LeadSource, MonthKey, Progress, TaskCounts } from "@/lib/types";
 import { completeMonths } from "@/lib/month";
+import { GooglePanels } from "./google-panels";
 import { buildMonthSummary } from "./summary";
 
 export interface OverviewProps {
@@ -42,23 +38,57 @@ export interface OverviewProps {
     category: string;
     assignee: string;
     completedDate: string | null;
+    url?: string;
   }[];
+  /**
+   * Search Console and GA4 totals. Optional: the Overview does not load them
+   * yet (Phase 2), so the panel only renders when a caller passes them.
+   */
+  google?: GoogleOverview | null;
 }
 
-const PLAN_UNAVAILABLE = "Teamwork is not available right now, so progress cannot be calculated.";
+const TEAMWORK_DOWN = "Teamwork is not available right now";
 
-const WORK_SERIES: ChartSeries[] = [
-  { key: "completed", label: "Completed", slot: 1 },
-  { key: "open", label: "Open", slot: 2 },
-];
-const LEAD_SERIES: ChartSeries[] = [{ key: "leads", label: "Genuine leads", slot: 1 }];
+/** Sources counted as "Search and AI" in the design: drawn blue, the rest grey. */
+const SEARCH_SOURCES = new Set<LeadSource>(["Organic Search", "AI Search"]);
 
-function Section({ title, children, className }: { title: string; children: React.ReactNode; className?: string }) {
+const BAR_BLUE = "#0091FF";
+const BAR_LIGHT = "#D6E9FB";
+const BAR_GREY = "#C4C9D1";
+
+/** The design's "View details" header link. Keeps the selected period. */
+function DetailsLink({ href, children = "View details", about }: { href: string; children?: ReactNode; about?: string }) {
   return (
-    <section className={`flex min-w-0 flex-col gap-3 rounded-lg border border-border bg-card p-4 ${className ?? ""}`}>
-      <h2 className="text-sm font-semibold">{title}</h2>
+    <PeriodLink
+      href={href}
+      className="inline-flex h-[30px] items-center rounded-lg px-2.5 text-[13px] font-medium text-primary hover:bg-muted focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
+    >
       {children}
-    </section>
+      {about ? <span className="sr-only"> about {about}</span> : null}
+    </PeriodLink>
+  );
+}
+
+/** Rows of a short list inside a panel block, separated by hairlines. */
+function ListRow({ children, className }: { children: ReactNode; className?: string }) {
+  return (
+    <li className={`relative flex min-h-11 items-center gap-2.5 border-t border-line-soft py-1.5 ${className ?? ""}`}>
+      {children}
+    </li>
+  );
+}
+
+function QuietEmpty({ children }: { children: ReactNode }) {
+  return <p className="py-6 text-[13px] text-ink-quiet">{children}</p>;
+}
+
+function CheckCircle() {
+  return (
+    <span aria-hidden className="flex size-5 flex-none items-center justify-center rounded-full bg-tone-good-bg">
+      <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#166534" strokeWidth="3.2" strokeLinecap="round" strokeLinejoin="round">
+        <path d="m5 12 5 5 9-10" />
+      </svg>
+    </span>
   );
 }
 
@@ -73,6 +103,7 @@ export function OverviewView({
   planProgress,
   tasksByMonth,
   recentCompleted,
+  google,
 }: OverviewProps) {
   const { leads } = useLeads();
 
@@ -95,7 +126,7 @@ export function OverviewView({
   }, [leads, range, months]);
 
   const periodMonths = useMemo(() => new Set(monthsInRange(range)), [range]);
-  const marked = (key: MonthKey) =>
+  const monthLabel = (key: MonthKey) =>
     periodMonths.has(key) ? `${formatMonthShort(key)} (in period)` : formatMonthShort(key);
 
   const summary = buildMonthSummary({
@@ -107,207 +138,247 @@ export function OverviewView({
     sources: stats.sources,
   });
 
-  const workData = tasksByMonth.map((row) => ({
-    label: formatMonthShort(row.month),
-    completed: row.completed,
-    open: row.open,
-  }));
   const leadsByMonth = completeMonths(stats.byMonth, inProgressMonth);
-  const leadData = leadsByMonth.map((row) => ({ label: formatMonthShort(row.month), leads: row.leads }));
+  const searchLeads = stats.sources
+    .filter((row) => SEARCH_SOURCES.has(row.source))
+    .reduce((sum, row) => sum + row.count, 0);
+  const openTasks = taskCounts.todo + taskCounts.inProgress;
 
   return (
-    <>
-      <MetricGrid className="xl:grid-cols-3 2xl:grid-cols-5">
-        <MetricCard
-          label="Completed tasks"
-          value={formatNumber(taskCounts.completed)}
-          detail={`of ${formatNumber(taskCounts.total)} in this period`}
-          icon={CheckCircle2}
-        />
-        {planProgress ? (
+    <div className="flex flex-col gap-8">
+      <PageSection label="Results and revenue">
+        <MetricGrid>
           <MetricCard
-            label="Plan progress"
-            value={`${planProgress.percent}%`}
-            detail={`${formatNumber(planProgress.completed)} of ${formatNumber(planProgress.total)} SEO tasks done in this period`}
-            icon={Target}
-            footer={<ProgressBar progress={planProgress} label="Plan progress" />}
+            tone="green"
+            label="Leads"
+            value={formatNumber(stats.metrics.genuine)}
+            detail={`${formatNumber(stats.metrics.spam)} spam excluded`}
           />
-        ) : (
-          <MetricCard label="Plan progress" value="—" detail={PLAN_UNAVAILABLE} icon={Target} />
-        )}
-        <MetricCard
-          label="Total leads (excl. spam)"
-          value={formatNumber(stats.metrics.genuine)}
-          detail={`${formatNumber(stats.metrics.spam)} spam excluded`}
-          icon={Users}
-        />
-        <MetricCard
-          label="Organic leads"
-          value={formatNumber(stats.metrics.organic)}
-          detail="Organic Search, excl. spam"
-          icon={Search}
-        />
-        <MetricCard
-          label="Won revenue"
-          value={formatCurrency(stats.metrics.wonRevenue)}
-          detail={`${formatNumber(stats.metrics.won)} won ${stats.metrics.won === 1 ? "deal" : "deals"}, from leads in this period`}
-          icon={DollarSign}
-        />
-      </MetricGrid>
+          <MetricCard
+            tone="green"
+            label="Organic leads"
+            value={formatNumber(stats.metrics.organic)}
+            detail="Organic Search, excl. spam"
+          />
+          <MetricCard
+            tone="amber"
+            label="Won revenue"
+            value={formatCurrency(stats.metrics.wonRevenue)}
+            detail={`${formatNumber(stats.metrics.won)} won ${stats.metrics.won === 1 ? "deal" : "deals"}, from leads in this period`}
+          />
+          <MetricCard
+            label="Average deal"
+            value={formatCurrency(stats.revenue.averageDeal)}
+            detail="Per won deal, from leads in this period"
+          />
+        </MetricGrid>
 
-      <div className="grid gap-5 lg:grid-cols-3">
-        <Section title={`Performance summary, ${periodText}`} className="lg:col-span-2">
-          <ul className="flex list-disc flex-col gap-1 pl-4 text-sm text-muted-foreground marker:text-border">
+        {google ? <GooglePanels google={google} /> : null}
+
+        <Panel
+          title="Leads"
+          description="Genuine leads only, spam removed"
+          headingLevel={3}
+          actions={<DetailsLink href="/leads" about="leads" />}
+        >
+          <div className="flex flex-col gap-8">
+            <PanelColumns>
+              <PanelBlock headingLevel={4} title="Leads over time" description="By month · complete months only">
+                {leadsByMonth.every((row) => row.leads === 0) ? (
+                  <QuietEmpty>No complete months with leads yet.</QuietEmpty>
+                ) : (
+                  <ColumnChart
+                    label="Genuine leads by month"
+                    data={leadsByMonth.map((row) => ({ label: formatMonthShort(row.month), value: row.leads }))}
+                  />
+                )}
+              </PanelBlock>
+              <PanelBlock
+                headingLevel={4}
+                title="Where leads came from"
+                description={`${formatNumber(searchLeads)} from Organic Search and AI Search · ${periodText}`}
+                aside={
+                  <Legend>
+                    <LegendItem color={BAR_BLUE} label="Search and AI" />
+                    <LegendItem color={BAR_GREY} label="Other" />
+                  </Legend>
+                }
+              >
+                {stats.sources.length === 0 ? (
+                  <QuietEmpty>No leads in this period.</QuietEmpty>
+                ) : (
+                  <div className="flex flex-1 flex-col justify-center">
+                    <RankedBars
+                      label="Leads by source"
+                      rows={stats.sources.map((row) => ({
+                        label: row.source,
+                        value: row.count,
+                        muted: !SEARCH_SOURCES.has(row.source),
+                      }))}
+                    />
+                  </div>
+                )}
+              </PanelBlock>
+            </PanelColumns>
+
+            <PanelBlock headingLevel={4} title="Recent leads" description="Latest genuine leads in this period">
+              {stats.recent.length === 0 ? (
+                <QuietEmpty>No leads in this period.</QuietEmpty>
+              ) : (
+                <ul>
+                  {stats.recent.map((lead) => (
+                    <ListRow key={lead.id}>
+                      <span className="flex min-w-0 flex-1 flex-col leading-[1.35]">
+                        <PeriodLink
+                          href={`/leads/${lead.id}`}
+                          className="truncate text-[13px] font-medium text-ink after:absolute after:inset-0 hover:text-primary focus-visible:underline"
+                        >
+                          {lead.name}
+                        </PeriodLink>
+                        <span className="truncate text-xs text-ink-quiet">
+                          {lead.attribution.source} · {formatDate(lead.submittedAt)}
+                        </span>
+                      </span>
+                      <StatusBadge tone={STAGE_META[lead.stage].tone} label={STAGE_META[lead.stage].label} />
+                    </ListRow>
+                  ))}
+                </ul>
+              )}
+            </PanelBlock>
+          </div>
+        </Panel>
+      </PageSection>
+
+      <PageSection label="SEO work">
+        <MetricGrid>
+          <MetricCard
+            tone="blue"
+            label="Tasks completed"
+            value={formatNumber(taskCounts.completed)}
+            suffix={`/${formatNumber(taskCounts.total)}`}
+            detail={
+              planProgress
+                ? `${planProgress.percent}% of this period's plan · ${formatNumber(planProgress.completed)} of ${formatNumber(planProgress.total)} SEO tasks`
+                : `Completed in this period`
+            }
+          />
+          <MetricCard
+            tone="amber"
+            label="Open tasks"
+            value={formatNumber(openTasks)}
+            detail={`${formatNumber(taskCounts.inProgress)} in progress · ${formatNumber(taskCounts.todo)} to do`}
+          />
+          {yearlyPlan ? (
+            <MetricCard
+              tone="green"
+              label="Yearly plan"
+              value={formatNumber(yearlyPlan.percent)}
+              suffix="%"
+              footer={<ProgressBar progress={yearlyPlan} label={`Yearly strategy progress, ${planYear}`} tone="good" />}
+              detail={`${formatNumber(yearlyPlan.completed)} of ${formatNumber(yearlyPlan.total)} SEO tasks in ${planYear}`}
+            />
+          ) : (
+            <MetricCard tone="green" label="Yearly plan" value="—" detail={TEAMWORK_DOWN} />
+          )}
+        </MetricGrid>
+
+        <Panel
+          title="Tasks"
+          description="Tasks from the SEO plan in Teamwork"
+          headingLevel={3}
+          actions={
+            <>
+              <DetailsLink href="/roadmap">View roadmap</DetailsLink>
+              <DetailsLink href="/work" about="tasks" />
+            </>
+          }
+        >
+          <PanelColumns>
+            <PanelBlock
+              headingLevel={4}
+              title="Tasks over time"
+              description="By month · completed and open (to do plus in progress)"
+              aside={
+                <Legend>
+                  <LegendItem color={BAR_BLUE} label="Completed" />
+                  <LegendItem color={BAR_LIGHT} label="Open" />
+                </Legend>
+              }
+            >
+              {tasksByMonth.every((row) => row.completed + row.open === 0) ? (
+                <QuietEmpty>No tasks yet.</QuietEmpty>
+              ) : (
+                <>
+                  <ColumnChart
+                    label="Tasks by month, completed plus open"
+                    data={tasksByMonth.map((row) => ({
+                      label: formatMonthShort(row.month),
+                      value: row.completed,
+                      extra: row.open,
+                    }))}
+                  />
+                  <table className="sr-only">
+                    <caption>Tasks by month</caption>
+                    <thead>
+                      <tr>
+                        <th scope="col">Month</th>
+                        <th scope="col">Completed</th>
+                        <th scope="col">Open</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {tasksByMonth.map((row) => (
+                        <tr key={row.month}>
+                          <th scope="row">{monthLabel(row.month)}</th>
+                          <td>{formatNumber(row.completed)}</td>
+                          <td>{formatNumber(row.open)}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </>
+              )}
+            </PanelBlock>
+            <PanelBlock headingLevel={4} title="Recently completed" description="Latest tasks finished in this period" className="gap-1.5">
+              {recentCompleted.length === 0 ? (
+                <QuietEmpty>No tasks were completed in this period.</QuietEmpty>
+              ) : (
+                <ul className="mt-1">
+                  {recentCompleted.map((task) => (
+                    <ListRow key={task.id}>
+                      <CheckCircle />
+                      <span className="flex min-w-0 flex-1 flex-col leading-[1.35]">
+                        <span className="truncate text-[13px] font-medium text-ink">
+                          <ExternalLink
+                            href={task.url}
+                            className="text-ink after:absolute after:inset-0 hover:text-primary"
+                          >
+                            {task.name}
+                          </ExternalLink>
+                        </span>
+                        <span className="truncate text-xs text-ink-quiet">
+                          {task.category} · {task.assignee}
+                        </span>
+                      </span>
+                      <span className="flex-none text-xs text-ink-quiet">{formatDate(task.completedDate)}</span>
+                    </ListRow>
+                  ))}
+                </ul>
+              )}
+            </PanelBlock>
+          </PanelColumns>
+        </Panel>
+      </PageSection>
+
+      <PageSection label="Summary">
+        <Panel title="Performance summary" description={periodText} headingLevel={3}>
+          <ul className="flex list-disc flex-col gap-1.5 pl-4 text-[13px] text-ink-body marker:text-bar-muted">
             {summary.map((line) => (
               <li key={line}>{line}</li>
             ))}
           </ul>
-        </Section>
-        <Section title="Yearly strategy progress">
-          {yearlyPlan ? (
-            <>
-              <div className="flex items-baseline justify-between gap-2">
-                <p className="text-2xl font-semibold tracking-tight tabular-nums">{yearlyPlan.percent}%</p>
-                <p className="text-xs text-muted-foreground">
-                  {formatNumber(yearlyPlan.completed)} of {formatNumber(yearlyPlan.total)} SEO tasks done
-                </p>
-              </div>
-              <ProgressBar progress={yearlyPlan} label="Yearly strategy progress" />
-              <p className="text-xs text-muted-foreground">
-                All SEO tasks in Teamwork for {planYear}, not only the selected period.
-              </p>
-            </>
-          ) : (
-            <p className="text-sm text-muted-foreground">{PLAN_UNAVAILABLE}</p>
-          )}
-          <PeriodLink
-            href="/roadmap"
-            className="mt-auto inline-flex items-center gap-1 self-start text-sm font-medium text-primary hover:underline focus-visible:underline"
-          >
-            View SEO Roadmap
-            <ArrowRight className="size-3.5" aria-hidden />
-          </PeriodLink>
-        </Section>
-      </div>
-
-      <div className="grid gap-5 lg:grid-cols-2">
-        <ChartCard
-          title="SEO work completion"
-          description="Tasks by month: completed and open (to do plus in progress)"
-          table={{
-            columns: ["Month", "Completed", "Open"],
-            rows: tasksByMonth.map((row) => ({
-              key: row.month,
-              cells: [
-                marked(row.month),
-                formatNumber(row.completed),
-                formatNumber(row.open),
-              ],
-            })),
-          }}
-        >
-          <BarTrendChart data={workData} series={WORK_SERIES} stacked />
-        </ChartCard>
-        <ChartCard
-          title="Leads overview"
-          description="Genuine leads by month, spam excluded. Complete months only"
-          table={{
-            columns: ["Month", "Genuine leads"],
-            rows: leadsByMonth.map((row) => ({
-              key: row.month,
-              cells: [
-                marked(row.month),
-                formatNumber(row.leads),
-              ],
-            })),
-          }}
-        >
-          <BarTrendChart data={leadData} series={LEAD_SERIES} />
-        </ChartCard>
-      </div>
-
-      <div className="grid gap-5 lg:grid-cols-3">
-        <ChartCard
-          title="Lead source distribution"
-          description={`${periodText}, spam excluded`}
-          className="lg:col-span-2"
-          table={{
-            columns: ["Source", "Leads"],
-            rows: stats.sources.map((row) => ({ key: row.source, cells: [row.source, formatNumber(row.count)] })),
-          }}
-        >
-          {stats.sources.length === 0 ? (
-            <EmptyState icon={Inbox} title="No leads in this period" />
-          ) : (
-            <RankedBars
-              label="Leads by source"
-              rows={stats.sources.map((row) => ({ label: row.source, value: row.count }))}
-            />
-          )}
-        </ChartCard>
-        <Section title="Revenue summary">
-          <dl className="flex flex-col gap-2 text-sm">
-            <div className="flex justify-between gap-2">
-              <dt className="text-muted-foreground">Total won</dt>
-              <dd className="font-medium tabular-nums">{formatCurrency(stats.revenue.totalWon)}</dd>
-            </div>
-            <div className="flex justify-between gap-2">
-              <dt className="text-muted-foreground">Won deals</dt>
-              <dd className="font-medium tabular-nums">{formatNumber(stats.revenue.wonDeals)}</dd>
-            </div>
-            <div className="flex justify-between gap-2">
-              <dt className="text-muted-foreground">Average deal</dt>
-              <dd className="font-medium tabular-nums">{formatCurrency(stats.revenue.averageDeal)}</dd>
-            </div>
-          </dl>
-        </Section>
-      </div>
-
-      <div className="grid gap-5 lg:grid-cols-2">
-        <Section title="Recent leads">
-          {stats.recent.length === 0 ? (
-            <EmptyState icon={Inbox} title="No leads in this period" />
-          ) : (
-            <ul className="divide-y divide-border">
-              {stats.recent.map((lead) => (
-                <li key={lead.id} className="flex items-center justify-between gap-3 py-2 first:pt-0 last:pb-0">
-                  <div className="min-w-0">
-                    <PeriodLink
-                      href={`/leads/${lead.id}`}
-                      className="block truncate text-sm font-medium hover:underline focus-visible:underline"
-                    >
-                      {lead.name}
-                    </PeriodLink>
-                    <p className="truncate text-xs text-muted-foreground">
-                      {lead.attribution.source} · {formatDate(lead.submittedAt)}
-                    </p>
-                  </div>
-                  <StatusBadge tone={STAGE_META[lead.stage].tone} label={STAGE_META[lead.stage].label} />
-                </li>
-              ))}
-            </ul>
-          )}
-        </Section>
-        <Section title="Recent completed tasks">
-          {recentCompleted.length === 0 ? (
-            <EmptyState icon={CheckCircle2} title="No completed tasks in this period" />
-          ) : (
-            <ul className="divide-y divide-border">
-              {recentCompleted.map((task) => (
-                <li key={task.id} className="flex items-center justify-between gap-3 py-2 first:pt-0 last:pb-0">
-                  <div className="min-w-0">
-                    <p className="truncate text-sm font-medium">{task.name}</p>
-                    <p className="truncate text-xs text-muted-foreground">
-                      {task.category} · {task.assignee}
-                    </p>
-                  </div>
-                  <span className="shrink-0 text-xs text-muted-foreground">{formatDate(task.completedDate)}</span>
-                </li>
-              ))}
-            </ul>
-          )}
-        </Section>
-      </div>
-    </>
+        </Panel>
+      </PageSection>
+    </div>
   );
 }

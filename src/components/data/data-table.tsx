@@ -17,6 +17,10 @@ export interface Column<T> {
   align?: "left" | "right";
   /** Hide low-priority columns on narrow screens. */
   hideBelow?: "sm" | "md" | "lg" | "xl";
+  /** Name the column for screen readers only, e.g. a narrow column of row arrows. */
+  srOnlyHeader?: boolean;
+  /** Fixed column width, e.g. "2.5rem". */
+  width?: string;
 }
 
 export interface SortState {
@@ -44,7 +48,15 @@ function compare(a: string | number | null, b: string | number | null): number {
  * that survive it. Pagination returns to page 1 whenever `rows` changes.
  *
  * With `rowHref`, make a cell in each row a real `<Link>` too, so the
- * destination is reachable by keyboard and screen reader.
+ * destination is reachable by keyboard and screen reader. An absolute
+ * http(s) href opens in a new tab.
+ */
+function openRowHref(href: string, push: (href: string) => void) {
+  if (/^https?:\/\//.test(href)) window.open(href, "_blank", "noopener,noreferrer");
+  else push(href);
+}
+
+/**
  */
 export function DataTable<T>({
   caption,
@@ -56,17 +68,23 @@ export function DataTable<T>({
   pageSize = 10,
   emptyTitle = "No results",
   emptyDescription = "Try changing the search or filters.",
+  bare = false,
+  footerSummary = false,
 }: {
   /** Accessible description of the table's contents. */
   caption: string;
   columns: Column<T>[];
   rows: T[];
   getRowId: (row: T) => string;
-  rowHref?: (row: T) => string;
+  rowHref?: (row: T) => string | undefined;
   defaultSort?: SortState;
   pageSize?: number;
   emptyTitle?: string;
   emptyDescription?: string;
+  /** Drop the outer border, for a table that sits inside a Panel. */
+  bare?: boolean;
+  /** Always show the "Showing x of y" footer, even on a single page. */
+  footerSummary?: boolean;
 }) {
   const router = useRouter();
   const [sort, setSort] = useState<SortState | null>(defaultSort ?? null);
@@ -105,12 +123,12 @@ export function DataTable<T>({
   }
 
   return (
-    <div className="overflow-hidden rounded-lg border border-border bg-card">
+    <div className={cn("overflow-hidden bg-card", bare ? "rounded-b-xl" : "rounded-xl border border-border")}>
       {rows.length === 0 ? (
         <EmptyState icon={SearchX} title={emptyTitle} description={emptyDescription} />
       ) : (
         <>
-          <div className="overflow-x-auto">
+          <div className="scroll-thin overflow-x-auto">
             <Table>
               <caption className="sr-only">{caption}</caption>
               <TableHeader>
@@ -123,8 +141,9 @@ export function DataTable<T>({
                         key={column.id}
                         scope="col"
                         aria-sort={active ? (sort.direction === "asc" ? "ascending" : "descending") : undefined}
+                        style={column.width ? { width: column.width } : undefined}
                         className={cn(
-                          "h-10 text-xs font-medium text-muted-foreground",
+                          "h-10 text-xs font-medium text-ink-quiet",
                           column.align === "right" && "text-right",
                           column.hideBelow && HIDE_CLASS[column.hideBelow],
                         )}
@@ -136,12 +155,14 @@ export function DataTable<T>({
                             className={cn(
                               "inline-flex items-center gap-1 rounded-sm outline-none hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring",
                               column.align === "right" && "flex-row-reverse",
-                              active && "text-foreground",
+                              active && "text-ink",
                             )}
                           >
                             {column.header}
                             <Icon className="size-3.5" aria-hidden />
                           </button>
+                        ) : column.srOnlyHeader ? (
+                          <span className="sr-only">{column.header}</span>
                         ) : (
                           column.header
                         )}
@@ -156,14 +177,22 @@ export function DataTable<T>({
                   return (
                     <TableRow
                       key={getRowId(row)}
-                      onClick={href ? () => router.push(href) : undefined}
+                      onClick={
+                        href
+                          ? (event) => {
+                              // A link inside the row handles its own click.
+                              if ((event.target as HTMLElement).closest("a")) return;
+                              openRowHref(href, router.push);
+                            }
+                          : undefined
+                      }
                       className={href ? "cursor-pointer" : undefined}
                     >
                       {columns.map((column) => (
                         <TableCell
                           key={column.id}
                           className={cn(
-                            "py-2.5",
+                            "h-14 py-2",
                             column.align === "right" && "text-right",
                             column.hideBelow && HIDE_CLASS[column.hideBelow],
                           )}
@@ -177,12 +206,12 @@ export function DataTable<T>({
               </TableBody>
             </Table>
           </div>
-          {sorted.length > pageSize ? (
-            <div className="flex items-center justify-between gap-3 border-t border-border px-3 py-2">
-              <p className="text-xs text-muted-foreground" aria-live="polite">
+          {sorted.length > pageSize || footerSummary ? (
+            <div className="flex min-h-14 items-center justify-between gap-3 border-t border-line-soft px-5 py-2.5">
+              <p className="text-[13px] text-ink-quiet" aria-live="polite">
                 Showing {start + 1}–{start + pageRows.length} of {sorted.length}
               </p>
-              <div className="flex items-center gap-1">
+              <div className="flex items-center gap-2">
                 <Button
                   variant="outline"
                   size="icon-sm"
@@ -192,7 +221,7 @@ export function DataTable<T>({
                 >
                   <ChevronLeft className="size-4" aria-hidden />
                 </Button>
-                <span className="px-2 text-xs text-muted-foreground">
+                <span className="text-[13px] text-ink-body tabular-nums">
                   Page {currentPage} of {pageCount}
                 </span>
                 <Button

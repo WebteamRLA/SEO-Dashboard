@@ -19,6 +19,7 @@
     "db:deploy": "prisma migrate deploy",
     "check:secrets": "node scripts/check-worker-secrets.mjs",
     "import:leads": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/import-leads.mjs",
+    "import:strategies": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/import-strategies.mjs",
     "check:google": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/check-google.mjs"
   },
   "dependencies": {

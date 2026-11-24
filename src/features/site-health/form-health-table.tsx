@@ -1,5 +1,6 @@
 "use client";
 
+import { Panel } from "@/components/data/panel";
 import { StatusBadge } from "@/components/data/status-badge";
 import { DataTable, type Column } from "@/components/data/data-table";
 import { formatDateTime, formatNumber } from "@/lib/format";
@@ -10,13 +11,13 @@ const columns: Column<MonitoredForm>[] = [
   {
     id: "name",
     header: "Form name",
-    cell: (form) => <span className="font-medium">{form.name}</span>,
+    cell: (form) => <span className="font-semibold text-ink">{form.name}</span>,
   },
   {
     id: "url",
     header: "URL",
     hideBelow: "sm",
-    cell: (form) => <span className="break-all text-muted-foreground">{form.url}</span>,
+    cell: (form) => <span className="break-all text-ink-quiet">{form.url}</span>,
   },
   {
     id: "status",
@@ -48,13 +49,16 @@ const columns: Column<MonitoredForm>[] = [
 
 export function FormHealthTable({ forms }: { forms: MonitoredForm[] }) {
   return (
-    <DataTable
-      caption="Website forms, their status and failed submissions"
-      columns={columns}
-      rows={forms}
-      getRowId={(form) => form.id}
-      emptyTitle="No forms to show"
-      emptyDescription="Forms appear here once they are identified."
-    />
+    <Panel id="forms" title="Website forms" description="Status and failed submissions for each form" flush>
+      <DataTable
+        bare
+        caption="Website forms, their status and failed submissions"
+        columns={columns}
+        rows={forms}
+        getRowId={(form) => form.id}
+        emptyTitle="No forms to show"
+        emptyDescription="Forms appear here once they are identified."
+      />
+    </Panel>
   );
 }

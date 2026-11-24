@@ -34,6 +34,8 @@ export function mapTeamworkTasks(
   rawTasks: readonly TeamworkTask[],
   included: TeamworkIncluded | undefined,
   projectName: string,
+  /** Teamwork site, e.g. https://rightleftagency.teamwork.com, for task links. */
+  baseUrl: string,
 ): MappedWork {
   const users = included?.users ?? {};
   const tasklists = included?.tasklists ?? {};
@@ -56,6 +58,7 @@ export function mapTeamworkTasks(
       dueDate: raw.dueDate ?? "",
       completedDate: raw.completedOn ? raw.completedOn.slice(0, 10) : null,
       completedAt: raw.completedAt ?? null,
+      url: `${baseUrl}/app/tasks/${raw.id}`,
     };
   });
 

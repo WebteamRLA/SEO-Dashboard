@@ -4,3 +4,4 @@ export * from "./leads";
 export * from "./traffic";
 export * from "./operations";
 export * from "./auth";
+export * from "./strategy";

@@ -16,9 +16,11 @@ import {
   type DragEndEvent,
   type DragStartEvent,
 } from "@dnd-kit/core";
-import { GripVertical, List, MoreHorizontal } from "lucide-react";
+import { GripVertical, MoreHorizontal } from "lucide-react";
 import { toast } from "sonner";
-import { StatusBadge } from "@/components/data/status-badge";
+import { ALL, FilterSelect } from "@/components/data/filter-select";
+import { Panel } from "@/components/data/panel";
+import { SearchInput } from "@/components/data/search-input";
 import { PageBody, PageHeader } from "@/components/layout/page-header";
 import { Button } from "@/components/ui/button";
 import {
@@ -29,16 +31,27 @@ import {
   DropdownMenuRadioItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Label } from "@/components/ui/label";
-import { Switch } from "@/components/ui/switch";
 import { STAGE_META } from "@/lib/domain/leads";
 import { formatCurrency } from "@/lib/format";
 import { cn } from "@/lib/utils";
-import { PIPELINE_STAGES, type Lead, type PipelineStage } from "@/lib/types";
+import { LEAD_SOURCES, PIPELINE_STAGES, type Lead, type PipelineStage } from "@/lib/types";
 import { DealValueDialog } from "./deal-value-dialog";
-import { groupByStage } from "./lead-logic";
+import { filterLeads, groupByStage } from "./lead-logic";
+import { LeadSummary } from "./lead-summary";
+import {
+  ACTIVE_FILTER_CLASS,
+  ClearFiltersButton,
+  formatMoneyShort,
+  LeadViewSwitch,
+  plural,
+  SourceIcon,
+  StageDot,
+  ToolbarTextButton,
+} from "./lead-ui";
 import { useLeads } from "./leads-store";
 import { SpamTag } from "./spam-tag";
+
+const SOURCE_OPTIONS = LEAD_SOURCES.map((source) => ({ value: source, label: source }));
 
 function toStage(value: unknown): PipelineStage | null {
   return PIPELINE_STAGES.find((stage) => stage === value) ?? null;
@@ -47,6 +60,8 @@ function toStage(value: unknown): PipelineStage | null {
 export function LeadPipeline() {
   const { leads, moveLead, getLead } = useLeads();
   const [hideSpam, setHideSpam] = useState(false);
+  const [search, setSearch] = useState("");
+  const [source, setSource] = useState(ALL);
   const [activeId, setActiveId] = useState<string | null>(null);
   const [pendingWonId, setPendingWonId] = useState<string | null>(null);
 
@@ -57,10 +72,19 @@ export function LeadPipeline() {
     useSensor(KeyboardSensor),
   );
 
-  const columns = useMemo(
-    () => groupByStage(leads).filter((column) => !(hideSpam && column.stage === "spam")),
-    [leads, hideSpam],
+  // Search and source narrow what the board shows. The board has no date
+  // filter, so no reference date is needed.
+  const visible = useMemo(
+    () => filterLeads(leads, { search, source, period: ALL, stage: ALL }, ""),
+    [leads, search, source],
   );
+  const columns = useMemo(
+    () => groupByStage(visible).filter((column) => !(hideSpam && column.stage === "spam")),
+    [visible, hideSpam],
+  );
+  const spamCount = visible.filter((lead) => lead.stage === "spam").length;
+  const shownCount = columns.reduce((sum, column) => sum + column.leads.length, 0);
+  const filtered = search.trim() !== "" || source !== ALL;
 
   const activeLead = activeId ? getLead(activeId) : undefined;
   const pendingLead = pendingWonId ? getLead(pendingWonId) : undefined;
@@ -108,26 +132,42 @@ export function LeadPipeline() {
 
   return (
     <PageBody>
-      <PageHeader
-        title="Lead Pipeline"
+      <PageHeader title="Lead Pipeline" />
+      <LeadSummary />
+      <Panel
+        id="all-leads"
+        title="All leads"
         description="Drag a lead to another column to change its stage, or use the menu on each card."
-        actions={
-          <>
-            <div className="flex items-center gap-2">
-              <Switch id="hide-spam" checked={hideSpam} onCheckedChange={setHideSpam} />
-              <Label htmlFor="hide-spam" className="text-sm font-normal">
-                Hide Spam
-              </Label>
+        actions={<LeadViewSwitch view="pipeline" />}
+        flush
+        toolbar={
+          <div className="flex flex-col flex-wrap gap-2 sm:flex-row sm:items-center">
+            <SearchInput value={search} onChange={setSearch} placeholder="Search name, email or company" />
+            <FilterSelect
+              label="Filter by source"
+              allLabel="All sources"
+              value={source}
+              options={SOURCE_OPTIONS}
+              onChange={setSource}
+              className={source !== ALL ? ACTIVE_FILTER_CLASS : undefined}
+            />
+            {filtered ? (
+              <ClearFiltersButton
+                onClick={() => {
+                  setSearch("");
+                  setSource(ALL);
+                }}
+              />
+            ) : null}
+            <div className="flex items-center gap-3 text-xs text-ink-quiet sm:ml-auto">
+              <ToolbarTextButton onClick={() => setHideSpam((value) => !value)}>
+                {hideSpam ? `Show spam (${spamCount})` : "Hide spam"}
+              </ToolbarTextButton>
+              <span>{plural(shownCount, "lead")}</span>
             </div>
-            <Button variant="outline" asChild>
-              <PeriodLink href="/leads">
-                <List aria-hidden />
-                Inbox
-              </PeriodLink>
-            </Button>
-          </>
+          </div>
         }
-      />
+      >
         <DndContext
           id="lead-pipeline"
           sensors={sensors}
@@ -139,8 +179,13 @@ export function LeadPipeline() {
           onDragCancel={() => setActiveId(null)}
           accessibility={{ announcements }}
         >
-          <div className="relative -mx-4 overflow-x-auto px-4 pb-2 sm:-mx-6 sm:px-6">
-            <div className="flex w-max items-start gap-3">
+          <div
+            role="region"
+            aria-label="Pipeline, scroll sideways for more stages"
+            tabIndex={0}
+            className="scroll-thin relative overflow-x-auto rounded-b-xl px-5 pt-4 pb-5 outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset"
+          >
+            <div className="flex w-max items-start gap-4">
               {columns.map((column) => (
                 <StageColumn
                   key={column.stage}
@@ -154,6 +199,7 @@ export function LeadPipeline() {
           </div>
           <DragOverlay>{activeLead ? <LeadCardBody lead={activeLead} lifted /> : null}</DragOverlay>
         </DndContext>
+      </Panel>
       <DealValueDialog
         open={pendingLead !== undefined}
         onOpenChange={(open) => {
@@ -191,27 +237,28 @@ function StageColumn({
       ref={setNodeRef}
       aria-labelledby={headingId}
       className={cn(
-        "flex max-h-[calc(100dvh-14rem)] min-h-40 w-72 shrink-0 flex-col rounded-lg border border-border bg-muted/40",
-        isOver && "border-ring bg-muted",
+        "flex max-h-[calc(100dvh-12rem)] min-h-40 w-[288px] shrink-0 flex-col gap-2 rounded-xl border border-border bg-[#F9FAFB] p-2.5 transition-colors",
+        isOver && "border-primary bg-tone-info-bg",
       )}
     >
-      <header className="flex flex-col gap-1.5 border-b border-border px-3 py-2.5">
-        <div className="flex items-center justify-between gap-2">
-          <h2 id={headingId} className="sr-only">
+      <header className="flex flex-col gap-0.5 px-0.5 pt-0.5 pb-1">
+        <div className="flex items-center gap-2">
+          <StageDot stage={stage} />
+          <h3 id={headingId} className="text-[13px] font-semibold text-ink">
             {meta.label}
-          </h2>
-          <StatusBadge tone={meta.tone} label={meta.label} />
-          <span className="text-xs text-muted-foreground tabular-nums">
-            {leads.length} {leads.length === 1 ? "lead" : "leads"}
+          </h3>
+          <span className="ml-auto text-xs font-semibold text-ink-body tabular-nums">
+            {leads.length}
+            <span className="sr-only"> {leads.length === 1 ? "lead" : "leads"}</span>
           </span>
         </div>
-        <p className="text-xs text-muted-foreground tabular-nums">
-          Deal value {formatCurrency(totalValue)}
+        <p className="text-xs text-ink-quiet tabular-nums">
+          {totalValue > 0 ? `Deal value ${formatCurrency(totalValue)}` : "No deal value"}
         </p>
       </header>
-      <ul className="flex min-h-0 flex-1 flex-col gap-2 overflow-y-auto p-2">
+      <ul className="scroll-thin -mx-1 flex min-h-0 flex-1 flex-col gap-2 overflow-y-auto px-1 pb-0.5">
         {leads.length === 0 ? (
-          <li className="px-2 py-6 text-center text-xs text-muted-foreground">No leads in this stage</li>
+          <li className="px-1 py-3.5 text-center text-xs text-ink-quiet">No leads in this stage</li>
         ) : (
           leads.map((lead) => (
             <li key={lead.id}>
@@ -236,7 +283,7 @@ function DraggableCard({ lead, onMove }: { lead: Lead; onMove: (lead: Lead, stag
             ref={setActivatorNodeRef}
             {...attributes}
             aria-label={`Move ${lead.name} with the keyboard`}
-            className="flex size-6 shrink-0 cursor-grab items-center justify-center rounded-sm text-muted-foreground outline-none hover:bg-muted hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring"
+            className="-ml-1 flex size-6 shrink-0 cursor-grab items-center justify-center rounded-md text-[#9CA3AF] outline-none hover:bg-muted hover:text-ink focus-visible:ring-2 focus-visible:ring-ring"
           >
             <GripVertical className="size-4" aria-hidden />
           </button>
@@ -261,32 +308,43 @@ function LeadCardBody({
   return (
     <article
       className={cn(
-        "flex flex-col gap-1.5 rounded-md border border-border bg-card p-2.5 text-sm",
-        lifted && "cursor-grabbing shadow-md",
+        "flex flex-col gap-1.5 rounded-[10px] border border-input bg-card px-3 py-2.5",
+        lifted && "cursor-grabbing shadow-[0_12px_32px_#1118271F]",
       )}
     >
       <div className="flex items-start gap-1">
         {handle}
-        <div className="min-w-0 flex-1">
+        <div className="flex min-w-0 flex-1 flex-col leading-[1.35]">
           <PeriodLink
             href={`/leads/${lead.id}`}
-            className="rounded-sm font-medium outline-none hover:underline focus-visible:ring-2 focus-visible:ring-ring"
+            className="w-fit max-w-full truncate rounded-sm text-[13px] font-semibold text-ink outline-none hover:text-primary focus-visible:ring-2 focus-visible:ring-ring"
           >
             {lead.name}
           </PeriodLink>
           {lead.company && lead.company !== lead.name ? (
-            <p className="truncate text-xs text-muted-foreground">{lead.company}</p>
+            <p className="truncate text-xs text-ink-quiet">{lead.company}</p>
           ) : null}
         </div>
         {menu}
       </div>
-      <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-muted-foreground">
-        <span>{lead.attribution.source}</span>
+      <div className="flex items-center justify-between gap-1.5">
+        <span className="flex min-w-0 items-center gap-2 text-xs text-ink-body">
+          <SourceIcon source={lead.attribution.source} />
+          <span className="truncate">{lead.attribution.source}</span>
+        </span>
         {lead.dealValue ? (
-          <span className="font-medium text-foreground tabular-nums">{formatCurrency(lead.dealValue)}</span>
+          <span
+            className={cn(
+              "shrink-0 text-xs font-semibold tabular-nums",
+              lead.stage === "won" ? "text-tone-good-fg" : "text-ink",
+            )}
+            title={formatCurrency(lead.dealValue)}
+          >
+            {formatMoneyShort(lead.dealValue)}
+          </span>
         ) : null}
-        {lead.spamFilteredBy ? <SpamTag by={lead.spamFilteredBy} /> : null}
       </div>
+      {lead.spamFilteredBy ? <SpamTag by={lead.spamFilteredBy} className="self-start" /> : null}
     </article>
   );
 }
@@ -295,7 +353,7 @@ function StageMenu({ lead, onMove }: { lead: Lead; onMove: (lead: Lead, stage: P
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <Button variant="ghost" size="icon-sm" aria-label={`Change stage for ${lead.name}`}>
+        <Button variant="ghost" size="icon-sm" className="-mr-1.5 -mt-0.5 size-7 text-ink-quiet" aria-label={`Change stage for ${lead.name}`}>
           <MoreHorizontal aria-hidden />
         </Button>
       </DropdownMenuTrigger>

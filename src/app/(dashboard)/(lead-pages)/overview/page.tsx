@@ -60,6 +60,7 @@ export default async function OverviewPage({
       category: task.category,
       assignee: people[task.assigneeId] ?? "Unassigned",
       completedDate: task.completedDate,
+      url: task.url,
     }));
 
 
@@ -67,27 +68,27 @@ export default async function OverviewPage({
     <PageBody>
       <PageHeader title="Overview" description={describePeriod(period)} />
       {work.error ? (
-        <div className="flex items-start gap-2.5 rounded-lg border border-border bg-card px-3.5 py-3 text-sm">
+        <div className="flex items-start gap-2.5 rounded-xl border border-border bg-card px-5 py-3.5 text-[13px]">
           <Info className="mt-0.5 size-4 shrink-0 text-status-warning" aria-hidden />
-          <p className="text-muted-foreground">
-            <span className="font-medium text-foreground">Teamwork is not available right now, so task figures are empty.</span>{" "}
+          <p className="text-ink-quiet">
+            <span className="font-medium text-ink">Teamwork is not available right now, so task figures are empty.</span>{" "}
             {work.error}
           </p>
         </div>
       ) : null}
-        <OverviewView
-          key={`${range.from}_${range.to}`}
-          range={range}
-          periodText={describePeriod(period)}
-          months={activeMonths}
-          inProgressMonth={toMonthKey(today)}
-          taskCounts={periodCounts}
-          planYear={year}
-          yearlyPlan={yearlyPlan}
-          planProgress={planProgress}
-          tasksByMonth={tasksByMonth}
-          recentCompleted={recentCompleted}
-        />
+      <OverviewView
+        key={`${range.from}_${range.to}`}
+        range={range}
+        periodText={describePeriod(period)}
+        months={activeMonths}
+        inProgressMonth={toMonthKey(today)}
+        taskCounts={periodCounts}
+        planYear={year}
+        yearlyPlan={yearlyPlan}
+        planProgress={planProgress}
+        tasksByMonth={tasksByMonth}
+        recentCompleted={recentCompleted}
+      />
     </PageBody>
   );
 }

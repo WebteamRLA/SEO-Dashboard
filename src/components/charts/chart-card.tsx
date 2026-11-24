@@ -31,11 +31,11 @@ export function ChartCard({
   const [showTable, setShowTable] = useState(false);
 
   return (
-    <section className={cn("flex min-w-0 flex-col gap-3 rounded-lg border border-border bg-card p-4", className)}>
-      <div className="flex items-start justify-between gap-2">
-        <div className="min-w-0">
-          <h2 className="text-sm font-semibold">{title}</h2>
-          {description ? <p className="mt-0.5 text-xs text-muted-foreground">{description}</p> : null}
+    <section className={cn("flex min-w-0 flex-col rounded-xl border border-border bg-card", className)}>
+      <div className="flex min-h-14 items-center justify-between gap-3 border-b border-border py-2 pr-3 pl-5">
+        <div className="flex min-w-0 flex-col gap-px">
+          <h2 className="text-base font-semibold">{title}</h2>
+          {description ? <p className="text-xs text-ink-quiet">{description}</p> : null}
         </div>
         <Button
           variant="ghost"
@@ -74,7 +74,7 @@ export function ChartCard({
           </Table>
         </div>
       ) : (
-        children
+        <div className="p-5">{children}</div>
       )}
     </section>
   );

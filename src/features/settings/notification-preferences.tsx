@@ -52,12 +52,12 @@ export function NotificationPreferences({
       cell: (preference) => (
         <div className="flex flex-col gap-1">
           <div className="flex flex-wrap items-center gap-2">
-            <span className="font-medium">{preference.label}</span>
+            <span className="font-semibold text-ink">{preference.label}</span>
             {preference.available ? null : <PhaseBadge phase={preference.phase} />}
           </div>
-          <span className="text-sm text-muted-foreground">{preference.description}</span>
+          <span className="text-[13px] text-ink-quiet">{preference.description}</span>
           {preference.available ? null : (
-            <span className="text-xs text-muted-foreground">Not active yet</span>
+            <span className="text-xs text-ink-quiet">Not active yet</span>
           )}
         </div>
       ),
@@ -92,6 +92,7 @@ export function NotificationPreferences({
 
   return (
     <DataTable
+      bare
       caption="Notification preferences by channel"
       columns={columns}
       rows={preferences}

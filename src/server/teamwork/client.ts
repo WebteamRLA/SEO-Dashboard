@@ -1,4 +1,5 @@
 import "server-only";
+import { createSwrCache } from "@/server/cache/swr";
 import { getTeamworkConfig, type TeamworkConfig } from "./config";
 import type { TeamworkTasksResponse } from "./types";
 
@@ -38,37 +39,32 @@ async function get<T>(config: TeamworkConfig, path: string): Promise<T> {
   }
 }
 
-interface CacheEntry {
-  at: number;
-  value: { response: TeamworkTasksResponse; projectName: string };
-}
-const TASKS_TTL_MS = 60_000;
-const cache = new Map<string, CacheEntry>();
-
 /**
- * All tasks in the SEO project, with tags, task lists, and assignees sideloaded.
- * Cached briefly so navigating between pages does not re-hit Teamwork's rate
- * limit. The cache is per server instance, which is all a read needs.
+ * Teamwork answers in a second or more for a full project, so pages never wait
+ * on it when they need not: data under a minute old is served as is, and data
+ * up to 30 minutes old is served at once while one background request
+ * refreshes it. The cache is per server instance, which is all a read needs.
  */
+const tasksCache = createSwrCache<{ response: TeamworkTasksResponse; projectName: string }>({
+  freshMs: 60_000,
+  staleMs: 30 * 60_000,
+  failureMs: 30_000,
+});
+
 export async function fetchSeoProjectTasks(): Promise<{
   response: TeamworkTasksResponse;
   projectName: string;
 }> {
   const config = getTeamworkConfig();
-  const key = config.projectId;
-  const hit = cache.get(key);
-  if (hit && Date.now() - hit.at < TASKS_TTL_MS) return hit.value;
-
-  const [tasks, project] = await Promise.all([
-    get<TeamworkTasksResponse>(
-      config,
-      `/projects/api/v3/projects/${config.projectId}/tasks.json` +
-        "?includeCompletedTasks=true&include=tags,tasklists,users&pageSize=500",
-    ),
-    get<{ project?: { name?: string } }>(config, `/projects/api/v3/projects/${config.projectId}.json`),
-  ]);
-
-  const value = { response: tasks, projectName: project.project?.name ?? "SEO Project" };
-  cache.set(key, { at: Date.now(), value });
-  return value;
+  return tasksCache(config.projectId, async () => {
+    const [tasks, project] = await Promise.all([
+      get<TeamworkTasksResponse>(
+        config,
+        `/projects/api/v3/projects/${config.projectId}/tasks.json` +
+          "?includeCompletedTasks=true&include=tags,tasklists,users&pageSize=500",
+      ),
+      get<{ project?: { name?: string } }>(config, `/projects/api/v3/projects/${config.projectId}.json`),
+    ]);
+    return { response: tasks, projectName: project.project?.name ?? "SEO Project" };
+  });
 }

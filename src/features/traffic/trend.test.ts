@@ -1,14 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { describeChange, findPrior } from "./trend";
-
-describe("findPrior", () => {
-  const rows = [{ month: "2026-01" }, { month: "2026-02" }];
-  it("returns the preceding row", () => expect(findPrior(rows, "2026-02")?.month).toBe("2026-01"));
-  it("returns undefined for the first or an unknown month", () => {
-    expect(findPrior(rows, "2026-01")).toBeUndefined();
-    expect(findPrior(rows, "2030-01")).toBeUndefined();
-  });
-});
+import { describeChange, eventLabel, pointLabel, windowNote } from "./trend";
 
 describe("describeChange", () => {
   it("words position as improved when the number falls", () => {
@@ -26,5 +17,23 @@ describe("describeChange", () => {
   it("has nothing to say without a usable prior", () => {
     expect(describeChange("percent", 5, undefined, "Sep")).toBeUndefined();
     expect(describeChange("percent", 5, 0, "Sep")).toBeUndefined();
+    expect(describeChange("points", null, 2, "Sep")).toBeUndefined();
+    expect(describeChange("position", 4, null, "Sep")).toBeUndefined();
+  });
+});
+
+describe("labels", () => {
+  it("turns GA4 event names into words", () => {
+    expect(eventLabel("contact_page_form_submit")).toBe("Contact page form submit");
+  });
+  it("labels days and months", () => {
+    expect(pointLabel({ start: "2026-11-03", unit: "day" })).toBe("Nov 3");
+    expect(pointLabel({ start: "2026-11-01", unit: "month" })).toBe("Nov");
+    expect(pointLabel({ start: "2025-11-01", unit: "month" }, true)).toBe("Nov 2025");
+  });
+  it("describes the window and its comparison", () => {
+    expect(
+      windowNote({ current: { from: "2026-11-01", to: "2026-11-22" }, previous: { from: "2026-10-10", to: "2026-10-31" }, days: 22 }),
+    ).toMatch(/22 days, through yesterday\), compared with /);
   });
 });

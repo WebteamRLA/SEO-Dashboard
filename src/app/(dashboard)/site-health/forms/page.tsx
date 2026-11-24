@@ -1,5 +1,4 @@
 import type { Metadata } from "next";
-import { CircleCheck, FileInput, TriangleAlert } from "lucide-react";
 import { PreviewNotice } from "@/components/data/preview-notice";
 import { MetricCard, MetricGrid } from "@/components/data/metric-card";
 import { PageBody, PageHeader } from "@/components/layout/page-header";
@@ -29,22 +28,22 @@ export default async function FormHealthPage() {
 
       <MetricGrid>
         <MetricCard
+          tone="blue"
           label="Monitored forms"
           value={formatNumber(forms.length)}
           detail={`${formatNumber(monitored)} active, ${formatNumber(paused)} paused`}
-          icon={FileInput}
         />
         <MetricCard
+          tone="green"
           label="Healthy"
           value={formatNumber(healthy)}
           detail={`of ${formatNumber(forms.length)} monitored forms`}
-          icon={CircleCheck}
         />
         <MetricCard
+          tone="amber"
           label="Failed submissions"
           value={formatNumber(failedSubmissions)}
           detail="Across all monitored forms"
-          icon={TriangleAlert}
         />
       </MetricGrid>
 

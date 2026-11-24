@@ -1,110 +1,97 @@
 "use client";
 
-import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useState } from "react";
-import { ChevronRight } from "lucide-react";
+import Link from "next/link";
 import { PhaseBadge } from "@/components/data/phase-badge";
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
-import { findActiveNav, NAVIGATION, type NavGroup } from "@/config/navigation";
+import { findActiveNav, NAV_SECTION_LABEL, NAVIGATION, type NavGroup, type NavSection } from "@/config/navigation";
 import { cn } from "@/lib/utils";
-import { BrandLogo } from "./brand-logo";
 import { usePeriodHref } from "./period-link";
 
 const rowClass =
-  "flex h-9 w-full items-center gap-2.5 rounded-md px-2.5 text-sm font-medium outline-none transition-colors hover:bg-muted focus-visible:ring-2 focus-visible:ring-ring";
-const activeClass = "bg-sidebar-accent text-sidebar-accent-foreground hover:bg-sidebar-accent";
+  "flex h-9 w-full items-center gap-2.5 rounded-lg px-2.5 text-sm font-medium text-sidebar-foreground outline-none transition-colors hover:bg-[#1118270d] hover:text-ink-body focus-visible:ring-2 focus-visible:ring-ring";
 
-function NavGroupRow({
-  group,
-  activeHref,
-  onNavigate,
-}: {
-  group: NavGroup;
-  activeHref: string | undefined;
-  onNavigate?: () => void;
-}) {
+function NavLink({ group, active, onNavigate }: { group: NavGroup; active: boolean; onNavigate?: () => void }) {
   const withPeriod = usePeriodHref();
-  const containsActive = group.items.some((item) => item.href === activeHref);
-  const [manuallyOpen, setManuallyOpen] = useState(false);
+  const pathname = usePathname();
   const Icon = group.icon;
-  const only = group.items[0];
-
-  if (group.items.length === 1 && only) {
-    return (
-      <Link
-        href={withPeriod(only.href)}
-        onClick={onNavigate}
-        aria-current={containsActive ? "page" : undefined}
-        className={cn(rowClass, containsActive && activeClass)}
-      >
-        <Icon className="size-4 shrink-0" aria-hidden />
-        <span className="truncate">{group.label}</span>
-        {only.phase ? <PhaseBadge phase={only.phase} className="ml-auto" /> : null}
-      </Link>
-    );
-  }
-
-  // The section holding the current page always stays visible.
-  const open = containsActive || manuallyOpen;
-
+  const target = group.items[0];
+  if (!target) return null;
   return (
-    <Collapsible open={open} onOpenChange={setManuallyOpen}>
-      <CollapsibleTrigger className={cn(rowClass, "text-left")}>
-        <Icon className="size-4 shrink-0" aria-hidden />
-        <span className="truncate">{group.label}</span>
-        <ChevronRight
-          className={cn("ml-auto size-4 shrink-0 text-muted-foreground transition-transform", open && "rotate-90")}
-          aria-hidden
-        />
-      </CollapsibleTrigger>
-      <CollapsibleContent>
-        <ul className="mt-0.5 ml-[1.1rem] flex flex-col gap-0.5 border-l border-border pl-2.5">
-          {group.items.map((item) => {
-            const active = item.href === activeHref;
-            return (
-              <li key={item.href}>
-                <Link
-                  href={withPeriod(item.href)}
-                  onClick={onNavigate}
-                  aria-current={active ? "page" : undefined}
-                  className={cn(rowClass, "h-8 font-normal", active && cn(activeClass, "font-medium"))}
-                >
-                  <span className="truncate">{item.label}</span>
-                  {item.phase && item.phase !== "P1" ? (
-                    <PhaseBadge phase={item.phase} className="ml-auto" />
-                  ) : null}
-                </Link>
-              </li>
-            );
-          })}
-        </ul>
-      </CollapsibleContent>
-    </Collapsible>
+    <Link
+      href={withPeriod(target.href)}
+      onClick={onNavigate}
+      aria-current={active ? (pathname === target.href ? "page" : "true") : undefined}
+      className={cn(rowClass, active && "bg-sidebar-accent hover:bg-sidebar-accent")}
+    >
+      <Icon className="size-[18px] shrink-0" strokeWidth={2} aria-hidden />
+      <span className="truncate">{group.label}</span>
+      {group.phase ? <PhaseBadge phase={group.phase} className="ml-auto" /> : null}
+    </Link>
   );
 }
 
-export function SidebarNav({ onNavigate }: { onNavigate?: () => void }) {
+function useActiveGroupId() {
   const pathname = usePathname();
-  const activeHref = findActiveNav(pathname)?.item.href;
+  return findActiveNav(pathname)?.group.id;
+}
+
+const MAIN_SECTIONS: NavSection[] = ["main", "results", "work", "reports"];
+
+export function SidebarNav({ onNavigate }: { onNavigate?: () => void }) {
+  const activeId = useActiveGroupId();
 
   return (
-    <nav aria-label="Main" className="flex flex-1 flex-col gap-0.5 overflow-y-auto p-3">
-      {NAVIGATION.map((group) => (
-        <NavGroupRow key={group.id} group={group} activeHref={activeHref} onNavigate={onNavigate} />
-      ))}
+    <nav aria-label="Dashboard" className="flex flex-col gap-5">
+      {MAIN_SECTIONS.map((section) => {
+        const groups = NAVIGATION.filter((group) => group.section === section);
+        if (groups.length === 0) return null;
+        const heading = NAV_SECTION_LABEL[section];
+        const headingId = `nav-${section}`;
+        return (
+          <div
+            key={section}
+            role={heading ? "group" : undefined}
+            aria-labelledby={heading ? headingId : undefined}
+            className="flex flex-col gap-0.5"
+          >
+            {heading ? (
+              <span id={headingId} className="flex h-6 items-center px-2.5 text-xs font-semibold tracking-[0.04em] text-ink-quiet uppercase">
+                {heading}
+              </span>
+            ) : null}
+            {groups.map((group) => (
+              <NavLink key={group.id} group={group} active={group.id === activeId} onNavigate={onNavigate} />
+            ))}
+          </div>
+        );
+      })}
     </nav>
   );
 }
 
-export function SidebarBrand() {
+/** Settings and anything else pinned above the account row. */
+export function SidebarFooterNav({ onNavigate }: { onNavigate?: () => void }) {
+  const activeId = useActiveGroupId();
   return (
-    <div className="flex h-14 shrink-0 items-center gap-2.5 border-b border-sidebar-border px-4">
-      <BrandLogo className="size-8" />
-      <span className="min-w-0 leading-tight">
-        <span className="block truncate text-sm font-semibold">SEO Dashboard</span>
-        <span className="block truncate text-xs text-muted-foreground">RightLeft Agency</span>
-      </span>
+    <div className="flex flex-col gap-0.5">
+      {NAVIGATION.filter((group) => group.section === "footer").map((group) => (
+        <NavLink key={group.id} group={group} active={group.id === activeId} onNavigate={onNavigate} />
+      ))}
+    </div>
+  );
+}
+
+export function SidebarBrand({ onNavigate }: { onNavigate?: () => void }) {
+  const withPeriod = usePeriodHref();
+  return (
+    <div className="-mx-3 flex h-16 shrink-0 items-center border-b border-sidebar-border pr-4 pl-[18px]">
+      <div className="flex min-w-0 flex-col gap-1">
+        <Link href={withPeriod("/overview")} onClick={onNavigate} className="flex items-center rounded-sm outline-none focus-visible:ring-2 focus-visible:ring-ring">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src="/rla-logo.svg" alt="Right Left Agency" width={166} height={17} className="block h-auto w-[166px]" />
+        </Link>
+        <span className="pl-5 text-[11px] leading-[1.2] tracking-[0.08em] text-[#556cce] uppercase">Client dashboard</span>
+      </div>
     </div>
   );
 }

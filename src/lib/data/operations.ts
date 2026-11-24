@@ -5,12 +5,9 @@ import type {
   BrokenLink,
   DeliveryModule,
   MonitoredForm,
-  MonthlyReport,
   NotificationPreference,
-  ReportStatus,
   SiteIssue,
 } from "@/lib/types";
-import { ACTIVE_MONTHS } from "@/mocks/calendar";
 import {
   aiAgents,
   brokenLinks,
@@ -19,7 +16,6 @@ import {
   notificationPreferences,
   siteIssues,
 } from "@/mocks/operations";
-import { searchMetrics } from "@/mocks/traffic";
 import { requireSessionUser } from "@/server/auth/session";
 import { createDb, releaseDb } from "@/server/db/client";
 import { mergePreferences } from "@/server/notifications/preferences";
@@ -67,26 +63,4 @@ export async function getNotificationPreferences(): Promise<NotificationPreferen
   } finally {
     await releaseDb(db);
   }
-}
-
-function reportStatus(index: number): ReportStatus {
-  if (index === ACTIVE_MONTHS.length - 1) return "draft";
-  if (index === ACTIVE_MONTHS.length - 2) return "ready";
-  return "sent";
-}
-
-/** Newest first. Lead figures come from `useLeads()`, so they stay current. */
-export async function getMonthlyReports(): Promise<MonthlyReport[]> {
-  await requireSessionUser();
-  return ACTIVE_MONTHS.map((month, index) => {
-    const search = searchMetrics.find((row) => row.month === month);
-    return {
-      id: `report-${month}`,
-      month,
-      organicClicks: search?.clicks ?? 0,
-      impressions: search?.impressions ?? 0,
-      averagePosition: search?.position ?? 0,
-      status: reportStatus(index),
-    };
-  }).reverse();
 }

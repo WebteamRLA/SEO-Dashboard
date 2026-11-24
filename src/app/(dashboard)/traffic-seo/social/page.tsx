@@ -1,46 +1,65 @@
 import type { Metadata } from "next";
-import { PreviewNotice } from "@/components/data/preview-notice";
+import { Panel } from "@/components/data/panel";
+import { SourceNotice } from "@/components/data/source-notice";
 import { PageBody, PageHeader } from "@/components/layout/page-header";
 import { PlannedFeatureGrid, type PlannedFeature } from "@/features/planned/planned-feature-grid";
+import { SocialView } from "@/features/traffic/social-view";
+import { getToday, resolvePagePeriod } from "@/lib/data/calendar";
+import { getSocialTraffic } from "@/lib/data/google";
+import { describePeriod } from "@/lib/date-range";
+import { socialTrend } from "@/server/google/engagement";
+import { trendUnit } from "@/server/google/analytics";
 
 export const metadata: Metadata = { title: "Social Analytics" };
 
-const FACEBOOK_MEASURES: PlannedFeature[] = [
-  { title: "Reach", description: "How many people saw posts from the Facebook page." },
-  { title: "Engagement", description: "Reactions, comments, and shares on Facebook posts." },
+const PLATFORM_MEASURES: PlannedFeature[] = [
+  { title: "Reach", description: "How many people saw the page's posts." },
+  { title: "Engagement", description: "Reactions, comments, and shares or reposts on posts." },
   { title: "Followers", description: "Change in the number of people following the page." },
-  { title: "Clicks to the site", description: "Clicks from Facebook posts to pages on the website." },
+  { title: "Top posts", description: "Which posts reached and engaged the most people." },
 ];
 
-const LINKEDIN_MEASURES: PlannedFeature[] = [
-  { title: "Reach", description: "How many people saw posts from the LinkedIn company page." },
-  { title: "Engagement", description: "Reactions, comments, and reposts on LinkedIn posts." },
-  { title: "Followers", description: "Change in the number of people following the company page." },
-  { title: "Clicks to the site", description: "Clicks from LinkedIn posts to pages on the website." },
+const PLATFORMS = [
+  {
+    name: "Facebook",
+    message: "Needs access to the RLA Facebook Page through a Meta app, granted by a Page admin.",
+  },
+  {
+    name: "LinkedIn",
+    message: "Needs LinkedIn Community Management API access for the RLA company page, approved by LinkedIn.",
+  },
 ];
 
-export default function SocialAnalyticsPage() {
+export default async function SocialAnalyticsPage({
+  searchParams,
+}: {
+  searchParams: Promise<{
+    range?: string | string[];
+    from?: string | string[];
+    to?: string | string[];
+    month?: string | string[];
+  }>;
+}) {
+  const [period, today] = await Promise.all([searchParams.then(resolvePagePeriod), getToday()]);
+  const { window, social } = await getSocialTraffic(period.range, today);
+  const trend = social.status === "ok" && window ? socialTrend(social.data.daily, window.current, trendUnit(window.days)) : [];
+
   return (
     <PageBody>
       <PageHeader
-        phase="P3"
         title="Social Analytics"
-        description="Facebook and LinkedIn performance, planned to be tracked in one place."
+        description={`Visits to the website from social networks · Live from GA4 · ${describePeriod(period)}`}
       />
-      <PreviewNotice phase="P3">
-        Nothing is connected yet. No platform figures are shown on this page. The lists below describe what will be tracked
-        for each platform.
-      </PreviewNotice>
+      <SocialView window={window} social={social} trend={trend} />
 
-      <section className="flex flex-col gap-3">
-        <h2 className="text-sm font-medium">Facebook</h2>
-        <PlannedFeatureGrid items={FACEBOOK_MEASURES} />
-      </section>
-
-      <section className="flex flex-col gap-3">
-        <h2 className="text-sm font-medium">LinkedIn</h2>
-        <PlannedFeatureGrid items={LINKEDIN_MEASURES} />
-      </section>
+      {PLATFORMS.map((platform) => (
+        <Panel key={platform.name} title={`${platform.name} page performance`}>
+          <div className="flex flex-col gap-4">
+            <SourceNotice source={{ status: "not-connected", message: platform.message }} />
+            <PlannedFeatureGrid items={PLATFORM_MEASURES} />
+          </div>
+        </Panel>
+      ))}
     </PageBody>
   );
 }

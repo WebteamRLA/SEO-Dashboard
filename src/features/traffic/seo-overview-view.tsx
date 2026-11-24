@@ -1,125 +1,150 @@
 "use client";
 
-import { BarChart3 } from "lucide-react";
-import { ChartCard } from "@/components/charts/chart-card";
-import { LineTrendChart, type ChartSeries } from "@/components/charts/charts";
+import type { ChartSeries } from "@/components/charts/charts";
 import { DataTable, type Column } from "@/components/data/data-table";
-import { EmptyState } from "@/components/data/empty-state";
+import { ExternalLink } from "@/components/data/external-link";
 import { MetricCard, MetricGrid } from "@/components/data/metric-card";
+import { Panel } from "@/components/data/panel";
+import type { LandingPageSummary, ReportWindow, SearchAnalytics, SourceResult, TrafficAnalytics } from "@/lib/data/google";
 import { formatNumber, formatPercent } from "@/lib/format";
-import { monthsInRange, previousRange, type DateRange } from "@/lib/date-range";
-import type { LandingPage, MonthKey, SearchMetrics, TrafficMetrics } from "@/lib/types";
-import { completeMonths } from "@/lib/month";
-import { aggregateSearch, aggregateTraffic, PRIOR_LABEL, roundingNote } from "./aggregate";
-import { COMPLETE_MONTHS_NOTE, describeChange, toChartData, toMonthTable } from "./trend";
+import type { SearchPoint } from "@/server/google/analytics";
+import { tileChange } from "./delta";
+import { SourceIssueCard } from "./source-issue-card";
+import { TrendPanel, VolumeChart } from "./trend-panel";
+import { labeller, toTrendData, toTrendTable, trendDescription, windowNote } from "./trend";
+
+/** "—" when the page is outside one source's top list, which is not the same as zero. */
+const count = (value: number | null) => (value === null ? "—" : formatNumber(value));
 
 const CLICK_SERIES: ChartSeries[] = [{ key: "clicks", label: "Organic clicks", slot: 1 }];
 
-const COLUMNS: Column<LandingPage>[] = [
-  { id: "url", header: "Page", cell: (row) => <span className="font-medium break-all">{row.url}</span>, sortValue: (row) => row.url },
-  { id: "clicks", header: "Clicks", align: "right", cell: (row) => formatNumber(row.clicks), sortValue: (row) => row.clicks },
+const COLUMNS: Column<LandingPageSummary>[] = [
+  {
+    id: "page",
+    header: "Page",
+    cell: (row) => (
+      <ExternalLink href={row.url ?? undefined} className="font-medium break-all">
+        {row.path}
+      </ExternalLink>
+    ),
+    sortValue: (row) => row.path,
+  },
+  { id: "clicks", header: "Clicks", align: "right", cell: (row) => <b className="font-semibold">{count(row.clicks)}</b>, sortValue: (row) => row.clicks },
   {
     id: "impressions",
     header: "Impressions",
     align: "right",
     hideBelow: "md",
-    cell: (row) => formatNumber(row.impressions),
+    cell: (row) => count(row.impressions),
     sortValue: (row) => row.impressions,
   },
   {
-    id: "visitors",
-    header: "Organic visitors",
+    id: "sessions",
+    header: "Organic sessions",
     align: "right",
     hideBelow: "sm",
-    cell: (row) => formatNumber(row.organicVisitors),
-    sortValue: (row) => row.organicVisitors,
+    cell: (row) => count(row.organicSessions),
+    sortValue: (row) => row.organicSessions,
   },
 ];
 
 export function SeoOverviewView({
-  range,
-  periodText,
-  inProgressMonth,
+  window,
   search,
   traffic,
+  trend,
   landingPages,
 }: {
-  range: DateRange;
-  periodText: string;
-  /** The month still in progress; a period that includes it is partial. */
-  inProgressMonth: MonthKey;
-  search: SearchMetrics[];
-  traffic: TrafficMetrics[];
-  landingPages: LandingPage[];
+  window: ReportWindow | null;
+  search: SourceResult<SearchAnalytics>;
+  traffic: SourceResult<TrafficAnalytics>;
+  trend: SearchPoint[];
+  landingPages: LandingPageSummary[];
 }) {
-  const months = monthsInRange(range);
-  const priorMonths = monthsInRange(previousRange(range));
-  const partial = months.includes(inProgressMonth);
-  const trend = completeMonths(search, inProgressMonth);
-  const current = aggregateSearch(search, months);
-  const prior = aggregateSearch(search, priorMonths);
-  const currentTraffic = aggregateTraffic(traffic, months);
-  const priorTraffic = aggregateTraffic(traffic, priorMonths);
-  // A part-month total compared with a full month would read as a collapse.
-  const countDetail = (value: number | undefined, previous: number | undefined) =>
-    partial ? "Includes the current month" : value === undefined ? undefined : describeChange("percent", value, previous, PRIOR_LABEL);
+  const totals = search.status === "ok" ? search.data.totals : null;
+  const visits = traffic.status === "ok" ? traffic.data.totals : null;
+  const noSearchPrior = totals !== null && totals.previous.impressions === 0;
+  const noTrafficPrior = visits !== null && visits.previous.sessions === 0;
+
+  const label = labeller(trend);
 
   return (
     <>
-      {current ? (
+      {totals || visits ? (
         <MetricGrid className="xl:grid-cols-5">
-          <MetricCard
-            label="Organic clicks"
-            value={formatNumber(current.clicks)}
-            detail={countDetail(current.clicks, prior?.clicks)}
-          />
-          <MetricCard
-            label="Impressions"
-            value={formatNumber(current.impressions)}
-            detail={countDetail(current.impressions, prior?.impressions)}
-          />
-          <MetricCard
-            label="Average CTR"
-            value={formatPercent(current.ctr, 1)}
-            detail={describeChange("points", current.ctr, prior?.ctr, PRIOR_LABEL)}
-          />
-          <MetricCard
-            label="Average position"
-            value={current.position.toFixed(1)}
-            detail={describeChange("position", current.position, prior?.position, PRIOR_LABEL)}
-          />
-          <MetricCard
-            label="Organic visitors"
-            value={currentTraffic ? formatNumber(currentTraffic.organicVisitors) : "—"}
-            detail={countDetail(currentTraffic?.organicVisitors, priorTraffic?.organicVisitors)}
-          />
+          {totals ? (
+            <>
+              <MetricCard
+                tone="blue"
+                label="Organic clicks"
+                value={formatNumber(totals.current.clicks)}
+                {...tileChange("percent", totals.current.clicks, totals.previous.clicks, !noSearchPrior)}
+              />
+              <MetricCard
+                tone="blue"
+                label="Impressions"
+                value={formatNumber(totals.current.impressions)}
+                {...tileChange("percent", totals.current.impressions, totals.previous.impressions, !noSearchPrior)}
+              />
+              <MetricCard
+                tone="green"
+                label="Average CTR"
+                value={totals.current.ctr === null ? "—" : formatPercent(totals.current.ctr, 1)}
+                {...tileChange("points", totals.current.ctr, totals.previous.ctr, !noSearchPrior)}
+              />
+              <MetricCard
+                tone="amber"
+                label="Average position"
+                value={totals.current.position === null ? "—" : totals.current.position.toFixed(1)}
+                {...tileChange("position", totals.current.position, totals.previous.position, !noSearchPrior)}
+              />
+            </>
+          ) : null}
+          {visits ? (
+            <MetricCard
+              tone="blue"
+              label="Organic sessions"
+              value={formatNumber(visits.current.organicSessions)}
+              {...tileChange("percent", visits.current.organicSessions, visits.previous.organicSessions, !noTrafficPrior)}
+            />
+          ) : null}
         </MetricGrid>
-      ) : (
-        <EmptyState icon={BarChart3} title={`No search data for ${periodText}`} />
-      )}
-      <p className="text-xs text-muted-foreground">{roundingNote(months)}</p>
+      ) : null}
 
-      <ChartCard
-        title="Organic clicks over time"
-        description={COMPLETE_MONTHS_NOTE}
-        table={toMonthTable(trend, "Organic clicks", (row) => formatNumber(row.clicks))}
-      >
-        <LineTrendChart area data={toChartData(trend, (row) => ({ clicks: row.clicks }))} series={CLICK_SERIES} />
-      </ChartCard>
+      {search.status !== "ok" ? <SourceIssueCard title="Search Console" source={search} /> : null}
+      {traffic.status !== "ok" ? <SourceIssueCard title="Google Analytics 4" source={traffic} /> : null}
 
-      <section className="flex flex-col gap-2">
-        <div>
-          <h2 className="text-sm font-semibold">Top landing pages</h2>
-          <p className="text-xs text-muted-foreground">Sample list. It does not change with the selected period.</p>
-        </div>
-        <DataTable
-          caption="Top landing pages"
-          columns={COLUMNS}
-          rows={landingPages}
-          getRowId={(row) => row.url}
-          defaultSort={{ columnId: "clicks", direction: "desc" }}
-        />
-      </section>
+      {trend.length > 0 ? (
+        <TrendPanel
+          title="Organic clicks over time"
+          description={`${trendDescription(trend)} · Search Console${window ? ` · ${windowNote(window)}` : ""}`}
+          table={toTrendTable(trend, "Organic clicks", (point) => formatNumber(point.clicks))}
+        >
+          <VolumeChart
+            label="Organic clicks by period"
+            columns={trend.map((point) => ({ label: label(point), value: point.clicks }))}
+            data={toTrendData(trend, (point) => ({ clicks: point.clicks }))}
+            series={CLICK_SERIES}
+          />
+        </TrendPanel>
+      ) : null}
+
+      {landingPages.length > 0 ? (
+        <Panel
+          flush
+          title="Top landing pages"
+          description="Clicks and impressions from Search Console, organic sessions from GA4. “—” means the page is not in that source’s top 250"
+        >
+          <DataTable
+            bare
+            caption="Top landing pages"
+            columns={COLUMNS}
+            rows={landingPages}
+            getRowId={(row) => row.path}
+            defaultSort={{ columnId: "clicks", direction: "desc" }}
+          />
+        </Panel>
+      ) : null}
     </>
   );
 }

@@ -24,7 +24,7 @@ export default async function DeliveryRoadmapPage() {
 
   return (
     <>
-      <p className="text-sm text-muted-foreground">
+      <p className="text-[13px] text-ink-quiet">
         Progress is the share of each module&apos;s delivery steps that are finished. Planned dates stay
         “To be confirmed” until they are confirmed.
       </p>

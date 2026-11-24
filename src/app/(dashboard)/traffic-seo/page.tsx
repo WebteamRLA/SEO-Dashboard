@@ -1,11 +1,10 @@
 import type { Metadata } from "next";
-import { PreviewNotice } from "@/components/data/preview-notice";
 import { PageBody, PageHeader } from "@/components/layout/page-header";
 import { SeoOverviewView } from "@/features/traffic/seo-overview-view";
 import { getToday, resolvePagePeriod } from "@/lib/data/calendar";
-import { getLandingPages, getSearchMetrics, getTrafficMetrics } from "@/lib/data/traffic";
+import { getSearchAnalytics, getTrafficAnalytics } from "@/lib/data/google";
 import { describePeriod } from "@/lib/date-range";
-import { toMonthKey } from "@/lib/month";
+import { joinLandingPages, searchTrend, trendUnit } from "@/server/google/analytics";
 
 export const metadata: Metadata = { title: "SEO Overview" };
 
@@ -19,27 +18,24 @@ export default async function SeoOverviewPage({
     month?: string | string[];
   }>;
 }) {
-  const period = await resolvePagePeriod(await searchParams);
-  const [search, traffic, landingPages, today] = await Promise.all([
-    getSearchMetrics(),
-    getTrafficMetrics(),
-    getLandingPages(),
-    getToday(),
+  const [period, today] = await Promise.all([searchParams.then(resolvePagePeriod), getToday()]);
+  const [{ window, search }, { traffic }] = await Promise.all([
+    getSearchAnalytics(period.range, today),
+    getTrafficAnalytics(period.range, today),
   ]);
-  const periodText = describePeriod(period);
+  const trend = search.status === "ok" && window ? searchTrend(search.data.daily, window.current, trendUnit(window.days)) : [];
+  const landingPages = joinLandingPages(
+    search.status === "ok" ? search.data.pages : [],
+    traffic.status === "ok" ? traffic.data.breakdown.landingPages : [],
+  );
 
   return (
     <PageBody>
-      <PageHeader title="SEO Overview" description={`Search and traffic headlines. ${periodText}`} phase="P2" />
-      <PreviewNotice phase="P2" />
-      <SeoOverviewView
-        range={period.range}
-        periodText={periodText}
-        inProgressMonth={toMonthKey(today)}
-        search={search}
-        traffic={traffic}
-        landingPages={landingPages}
+      <PageHeader
+        title="SEO Overview"
+        description={`Search and traffic headlines · Live from Search Console and GA4 · ${describePeriod(period)}`}
       />
+      <SeoOverviewView window={window} search={search} traffic={traffic} trend={trend} landingPages={landingPages} />
     </PageBody>
   );
 }

@@ -17,15 +17,15 @@ export function SearchInput({
   className?: string;
 }) {
   return (
-    <div className={cn("relative w-full sm:w-64", className)}>
-      <Search className="pointer-events-none absolute top-1/2 left-2.5 size-4 -translate-y-1/2 text-muted-foreground" aria-hidden />
+    <div className={cn("relative w-full sm:w-[300px]", className)}>
+      <Search className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-ink-quiet" aria-hidden />
       <Input
         type="search"
         value={value}
         onChange={(event) => onChange(event.target.value)}
         placeholder={placeholder}
         aria-label={placeholder}
-        className="bg-card pl-8"
+        className="bg-card pl-9"
       />
     </div>
   );

@@ -5,15 +5,40 @@
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans), system-ui, sans-serif;
-  --font-mono: var(--font-geist-mono);
-  --font-heading: var(--font-geist-sans), system-ui, sans-serif;
+  --font-sans: var(--font-inter), system-ui, sans-serif;
+  --font-mono: ui-monospace, SFMono-Regular, Menlo, monospace;
+  --font-heading: var(--font-inter), system-ui, sans-serif;
   --color-status-good: var(--status-good);
   --color-status-warning: var(--status-warning);
   --color-status-serious: var(--status-serious);
   --color-status-critical: var(--status-critical);
   --color-status-info: var(--status-info);
   --color-status-neutral: var(--status-neutral);
+  /* Soft tone pairs for pills and chips: a tinted background with dark text. */
+  --color-tone-good-bg: var(--tone-good-bg);
+  --color-tone-good-fg: var(--tone-good-fg);
+  --color-tone-info-bg: var(--tone-info-bg);
+  --color-tone-info-fg: var(--tone-info-fg);
+  --color-tone-warning-bg: var(--tone-warning-bg);
+  --color-tone-warning-fg: var(--tone-warning-fg);
+  --color-tone-serious-bg: var(--tone-serious-bg);
+  --color-tone-serious-fg: var(--tone-serious-fg);
+  --color-tone-critical-bg: var(--tone-critical-bg);
+  --color-tone-critical-fg: var(--tone-critical-fg);
+  --color-tone-neutral-bg: var(--tone-neutral-bg);
+  --color-tone-neutral-fg: var(--tone-neutral-fg);
+  /* Text greys from the design: strong, body, and quiet. */
+  --color-ink: var(--ink);
+  --color-ink-body: var(--ink-body);
+  --color-ink-quiet: var(--ink-quiet);
+  --color-surface-subtle: var(--surface-subtle);
+  --color-line: var(--line);
+  --color-line-soft: var(--line-soft);
+  --color-bar: var(--bar);
+  --color-bar-light: var(--bar-light);
+  --color-bar-muted: var(--bar-muted);
+  --color-bar-track: var(--bar-track);
+  --color-primary-hover: var(--primary-hover);
   --color-sidebar-ring: var(--sidebar-ring);
   --color-sidebar-border: var(--sidebar-border);
   --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
@@ -38,61 +63,96 @@
   --color-popover: var(--popover);
   --color-card-foreground: var(--card-foreground);
   --color-card: var(--card);
-  --radius-sm: calc(var(--radius) * 0.6);
-  --radius-md: calc(var(--radius) * 0.8);
-  --radius-lg: var(--radius);
-  --radius-xl: calc(var(--radius) * 1.4);
-  --radius-2xl: calc(var(--radius) * 1.8);
-  --radius-3xl: calc(var(--radius) * 2.2);
-  --radius-4xl: calc(var(--radius) * 2.6);
+  /* Controls are 8px, panels and tiles 12px. */
+  --radius-sm: 0.25rem;
+  --radius-md: 0.375rem;
+  --radius-lg: 0.5rem;
+  --radius-xl: 0.75rem;
+  --radius-2xl: 1rem;
+  --radius-3xl: 1.25rem;
+  --radius-4xl: 1.5rem;
 }
 
 :root {
-  /* Surfaces: a neutral page plane with white working surfaces. */
-  --background: #f7f7f5;
-  --foreground: #161615;
+  /* Surfaces: white working plane, a faint grey sidebar. */
+  --background: #ffffff;
+  --foreground: #111827;
   --card: #ffffff;
-  --card-foreground: #161615;
+  --card-foreground: #111827;
   --popover: #ffffff;
-  --popover-foreground: #161615;
+  --popover-foreground: #111827;
 
   /* One accent. Everything else is neutral or a reserved status colour. */
-  --primary: #1c5cab;
+  --primary: #0070c9;
+  --primary-hover: #005a9e;
   --primary-foreground: #ffffff;
-  --secondary: #f0efec;
-  --secondary-foreground: #161615;
-  --muted: #f0efec;
-  --muted-foreground: #5f5e5a;
-  --accent: #eef3fa;
-  --accent-foreground: #164a8a;
-  --destructive: #b92f2f;
-  --border: #e4e3dd;
-  --input: #d6d5ce;
-  --ring: #1c5cab;
+  --secondary: #f3f4f6;
+  --secondary-foreground: #111827;
+  --muted: #f3f4f6;
+  --muted-foreground: #6b7280;
+  --accent: #e6f4ff;
+  --accent-foreground: #0060ad;
+  --destructive: #b91c1c;
+  /* Panel and divider lines are lighter than control borders. */
+  --border: #eef0f3;
+  --input: #e5e7eb;
+  --ring: #0091ff;
   --radius: 0.5rem;
 
+  --ink: #111827;
+  --ink-body: #374151;
+  --ink-quiet: #6b7280;
+  --surface-subtle: #fafbfc;
+  --line: #eef0f3;
+  --line-soft: #f3f4f6;
+
+  /* Bars: the main series, its light partner, the "other" grey, and the track. */
+  --bar: #0091ff;
+  --bar-light: #d6e9fb;
+  --bar-muted: #c4c9d1;
+  --bar-track: #f3f4f6;
+
   /* Sidebar */
-  --sidebar: #ffffff;
-  --sidebar-foreground: #33322f;
-  --sidebar-primary: #1c5cab;
+  --sidebar: #fafbfc;
+  --sidebar-foreground: #374151;
+  --sidebar-primary: #0070c9;
   --sidebar-primary-foreground: #ffffff;
-  --sidebar-accent: #eef3fa;
-  --sidebar-accent-foreground: #164a8a;
-  --sidebar-border: #e4e3dd;
-  --sidebar-ring: #1c5cab;
+  --sidebar-accent: #f1f3f5;
+  --sidebar-accent-foreground: #374151;
+  --sidebar-border: #eef0f3;
+  --sidebar-ring: #0091ff;
 
   /* Status: reserved for state, always paired with a label. Never a series. */
-  --status-good: #0ca30c;
-  --status-warning: #fab219;
-  --status-serious: #ec835a;
-  --status-critical: #d03b3b;
-  --status-info: #2a78d6;
-  --status-neutral: #a3a29c;
+  --status-good: #16a34a;
+  --status-warning: #f59e0b;
+  --status-serious: #f97316;
+  --status-critical: #ef4444;
+  --status-info: #0091ff;
+  --status-neutral: #9ca3af;
+
+  --tone-good-bg: #dcfce7;
+  --tone-good-fg: #166534;
+  --tone-info-bg: #e6f4ff;
+  --tone-info-fg: #0060ad;
+  --tone-warning-bg: #fef3c7;
+  --tone-warning-fg: #92400e;
+  --tone-serious-bg: #ffedd5;
+  --tone-serious-fg: #9a3412;
+  --tone-critical-bg: #fee2e2;
+  --tone-critical-fg: #b91c1c;
+  --tone-neutral-bg: #f3f4f6;
+  --tone-neutral-fg: #374151;
+
+  /* KPI tile outlines, tinted by what the figure is about. */
+  --tile-blue: #e3f1ff;
+  --tile-green: #dcf7e5;
+  --tile-amber: #fcefd3;
+  --tile-neutral: #eef0f3;
 
   /* Categorical chart slots. Order is the colour-blind-safety mechanism:
      assign in sequence, never cycle, validated on #ffffff. Slots 3-5 are under
      3:1 contrast, so charts using them must offer labels or the table view. */
-  --series-1: #2a78d6;
+  --series-1: #0091ff;
   --series-2: #eb6834;
   --series-3: #1baf7a;
   --series-4: #eda100;
@@ -101,9 +161,9 @@
   --series-7: #6250d6;
   --series-8: #e34948;
 
-  --chart-grid: #e8e7e1;
-  --chart-axis: #c3c2b7;
-  --chart-ink: #6b6a65;
+  --chart-grid: #eef0f3;
+  --chart-axis: #d1d5db;
+  --chart-ink: #6b7280;
 }
 
 @layer base {
@@ -112,12 +172,33 @@
   }
   body {
     @apply bg-background text-foreground;
+    font-size: 14px;
+    line-height: 1.5;
   }
   html {
     @apply font-sans;
   }
+  ::selection {
+    background: #d6ecff;
+  }
   /* Numbers in columns must align; large standalone figures stay proportional. */
   table {
     font-variant-numeric: tabular-nums;
+  }
+}
+
+@layer utilities {
+  /* Thin horizontal scrollbars for wide tables and boards. */
+  .scroll-thin {
+    scrollbar-width: thin;
+    scrollbar-color: #d1d5db transparent;
+  }
+  .scroll-thin::-webkit-scrollbar {
+    height: 8px;
+    width: 8px;
+  }
+  .scroll-thin::-webkit-scrollbar-thumb {
+    background: #d1d5db;
+    border-radius: 4px;
   }
 }

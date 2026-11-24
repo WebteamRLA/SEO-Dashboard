@@ -10,9 +10,9 @@ export interface TaskFilters {
   category: string;
 }
 
-export const STATUS_META: Record<TaskStatus, { label: string; tone: "neutral" | "warning" | "good" }> = {
+export const STATUS_META: Record<TaskStatus, { label: string; tone: "neutral" | "info" | "good" }> = {
   todo: { label: "To do", tone: "neutral" },
-  "in-progress": { label: "In progress", tone: "warning" },
+  "in-progress": { label: "In progress", tone: "info" },
   completed: { label: "Completed", tone: "good" },
 };
 

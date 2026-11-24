@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import { Panel } from "@/components/data/panel";
 import { DataTable, type Column } from "@/components/data/data-table";
 import { FilterBar, FilterSelect, ALL, type FilterOption } from "@/components/data/filter-select";
 import { StatusBadge } from "@/components/data/status-badge";
@@ -18,14 +19,14 @@ const COLUMNS: Column<SiteIssue>[] = [
   {
     id: "name",
     header: "Issue",
-    cell: (issue) => <span className="font-medium">{issue.name}</span>,
+    cell: (issue) => <span className="font-semibold text-ink">{issue.name}</span>,
     sortValue: (issue) => issue.name,
   },
   {
     id: "url",
     header: "URL",
     hideBelow: "md",
-    cell: (issue) => <span className="break-all text-muted-foreground">{issue.url}</span>,
+    cell: (issue) => <span className="break-all text-ink-quiet">{issue.url}</span>,
     sortValue: (issue) => issue.url,
   },
   {
@@ -33,7 +34,7 @@ const COLUMNS: Column<SiteIssue>[] = [
     header: "Severity",
     cell: (issue) => {
       const meta = SEVERITY_META[issue.severity];
-      return <StatusBadge tone={meta.tone} label={meta.label} />;
+      return <StatusBadge tone={meta.tone} label={meta.label} variant="tag" />;
     },
     // Numeric rank, so critical sorts first rather than alphabetically.
     sortValue: (issue) => SEVERITY_META[issue.severity].rank,
@@ -71,8 +72,13 @@ export function IssueLogView({ issues }: { issues: SiteIssue[] }) {
   );
 
   return (
-    <>
-      <FilterBar>
+    <Panel
+      id="issues"
+      title="Issues to fix"
+      description="Logged against pages on the website. Most severe first by default."
+      flush
+      toolbar={
+        <FilterBar>
         <FilterSelect
           label="Filter by severity"
           allLabel="All severities"
@@ -87,9 +93,11 @@ export function IssueLogView({ issues }: { issues: SiteIssue[] }) {
           options={STATUS_OPTIONS}
           onChange={setStatus}
         />
-      </FilterBar>
-
+        </FilterBar>
+      }
+    >
       <DataTable
+        bare
         caption="Logged site issues, with severity and current status"
         columns={COLUMNS}
         rows={filtered}
@@ -102,6 +110,6 @@ export function IssueLogView({ issues }: { issues: SiteIssue[] }) {
             : "Try a different severity or status."
         }
       />
-    </>
+    </Panel>
   );
 }

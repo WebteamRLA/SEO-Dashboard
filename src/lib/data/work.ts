@@ -2,7 +2,7 @@ import "server-only";
 import { requireSessionUser } from "@/server/auth/session";
 import { resolveRoadmap } from "@/lib/domain/progress";
 import { fetchSeoProjectTasks } from "@/server/teamwork/client";
-import { filterByTag, findTagId, mapTeamworkTasks } from "@/server/teamwork/map";
+import { mapTeamworkTasks } from "@/server/teamwork/map";
 import { getTeamworkConfig } from "@/server/teamwork/config";
 import type { MonthKey, RoadmapItemWithProgress, Task } from "@/lib/types";
 import { roadmapItems, tasks } from "@/mocks/work";
@@ -24,17 +24,14 @@ export interface WorkTrackerData {
 }
 
 /**
- * Live Work Tracker data: the SEO-tagged tasks in the Teamwork project, mapped
- * to the dashboard's shape. The caller filters to the selected month. Overview
- * and Roadmap still use the sample data above until they are wired up too.
+ * Live Work Tracker data: every task in the Teamwork project, across all its
+ * task lists (Cards, General tasks) and tags, mapped to the dashboard's shape.
+ * The caller filters to the selected period.
  */
 export async function getWorkTrackerData(): Promise<WorkTrackerData> {
   await requireSessionUser();
-  const { seoTagName } = getTeamworkConfig();
   const { response, projectName } = await fetchSeoProjectTasks();
-  const seoTagId = findTagId(response.included, seoTagName);
-  const seoTasks = seoTagId === null ? [] : filterByTag(response.tasks, seoTagId);
-  return mapTeamworkTasks(seoTasks, response.included, projectName);
+  return mapTeamworkTasks(response.tasks, response.included, projectName, getTeamworkConfig().baseUrl);
 }
 
 /** Roadmap items with status and progress derived from their linked tasks. */

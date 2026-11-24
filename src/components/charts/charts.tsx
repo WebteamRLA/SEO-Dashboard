@@ -21,13 +21,16 @@ export interface ChartSeries {
   key: string;
   label: string;
   slot: SeriesSlot;
+  /** A fixed colour instead of the slot, for the design's main-and-light pairs (e.g. var(--bar), var(--bar-light)). */
+  color?: string;
 }
 
-export type ChartDatum = { label: string } & Record<string, string | number>;
+/** A missing value (null) is drawn as a gap. */
+export type ChartDatum = { label: string } & Record<string, string | number | null>;
 
 type ValueFormatter = (value: number) => string;
 
-const seriesColor = (slot: SeriesSlot) => `var(--series-${slot})`;
+const seriesColor = (entry: Pick<ChartSeries, "slot" | "color">) => entry.color ?? `var(--series-${entry.slot})`;
 const AXIS_TICK = { fill: "var(--chart-ink)", fontSize: 12 };
 
 export function ChartLegend({ series }: { series: ChartSeries[] }) {
@@ -37,7 +40,7 @@ export function ChartLegend({ series }: { series: ChartSeries[] }) {
     <ul className="flex flex-wrap gap-x-4 gap-y-1">
       {series.map((entry) => (
         <li key={entry.key} className="flex items-center gap-1.5 text-xs text-muted-foreground">
-          <span className="size-2.5 rounded-sm" style={{ backgroundColor: seriesColor(entry.slot) }} aria-hidden />
+          <span className="size-2.5 rounded-sm" style={{ backgroundColor: seriesColor(entry) }} aria-hidden />
           {entry.label}
         </li>
       ))}
@@ -67,7 +70,7 @@ function ChartTooltip({
           const value = payload.find((item) => item.dataKey === entry.key)?.value;
           return (
             <li key={entry.key} className="flex items-center gap-1.5">
-              <span className="size-2 rounded-sm" style={{ backgroundColor: seriesColor(entry.slot) }} aria-hidden />
+              <span className="size-2 rounded-sm" style={{ backgroundColor: seriesColor(entry) }} aria-hidden />
               <span className="text-muted-foreground">{entry.label}</span>
               <span className="ml-auto pl-3 font-medium tabular-nums">
                 {typeof value === "number" ? format(value) : "—"}
@@ -185,7 +188,7 @@ export function BarTrendChart({
           key={entry.key}
           dataKey={entry.key}
           stackId={stacked ? "stack" : undefined}
-          fill={seriesColor(entry.slot)}
+          fill={seriesColor(entry)}
           maxBarSize={24}
           // Only the top of a stack is rounded. Segments are split by a surface gap.
           radius={!stacked || index === series.length - 1 ? [4, 4, 0, 0] : 0}
@@ -235,9 +238,9 @@ export function LineTrendChart({
             key={entry.key}
             type="monotone"
             dataKey={entry.key}
-            stroke={seriesColor(entry.slot)}
+            stroke={seriesColor(entry)}
             strokeWidth={2}
-            fill={seriesColor(entry.slot)}
+            fill={seriesColor(entry)}
             fillOpacity={0.1}
             dot={false}
             activeDot={{ r: 4, stroke: "var(--card)", strokeWidth: 2 }}
@@ -248,7 +251,7 @@ export function LineTrendChart({
             key={entry.key}
             type="monotone"
             dataKey={entry.key}
-            stroke={seriesColor(entry.slot)}
+            stroke={seriesColor(entry)}
             strokeWidth={2}
             dot={false}
             activeDot={{ r: 4, stroke: "var(--card)", strokeWidth: 2 }}

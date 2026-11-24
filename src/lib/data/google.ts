@@ -2,7 +2,27 @@ import "server-only";
 import { requireSessionUser } from "@/server/auth/session";
 import type { DateRange } from "@/lib/date-range";
 import type { ISODate } from "@/lib/types";
-import { fetchSearchTotals, fetchTrafficTotals } from "@/server/google/client";
+import {
+  fetchBehavior,
+  fetchSearchBreakdown,
+  fetchSocialTraffic,
+  fetchSearchTotals,
+  fetchTrafficBreakdown,
+  fetchTrafficTotals,
+  type SearchBreakdown,
+} from "@/server/google/client";
+import type { TrafficBreakdown } from "@/server/google/analytics";
+export type {
+  BehaviorData,
+  DeviceRow,
+  EnquiryLandingPage,
+  KeyEventRow,
+  PageEngagement,
+  SocialLandingPage,
+  SocialPlatformRow,
+  SocialTraffic,
+} from "@/server/google/engagement";
+import type { BehaviorData, SocialTraffic } from "@/server/google/engagement";
 import { GoogleConfigError } from "@/server/google/config";
 import {
   reportWindow,
@@ -12,15 +32,29 @@ import {
   type TrafficTotals,
 } from "@/server/google/reports";
 
-export type { SearchTotals, TrafficTotals } from "@/server/google/reports";
+export type { SearchTotals, TrafficTotals, ReportWindow } from "@/server/google/reports";
+export type { SearchBreakdown } from "@/server/google/client";
+export type {
+  ChannelRow,
+  KeywordRow,
+  LandingPageSummary,
+  SearchDay,
+  TrafficBreakdown,
+  TrafficDay,
+} from "@/server/google/analytics";
 
-export type GoogleSource<T> =
-  | { status: "ok"; data: Comparison<T> }
+/** One Google source's data, or why it is not shown. Never thrown, so a page still renders. */
+export type SourceResult<T> =
+  | { status: "ok"; data: T }
   /** Credentials or the property ID are not set; expected until access is granted. */
   | { status: "not-connected"; message: string }
   /** The period has no complete day yet, e.g. "This month" on the 1st. */
   | { status: "empty"; message: string }
   | { status: "error"; message: string };
+
+export type GoogleSource<T> = SourceResult<Comparison<T>>;
+
+const EMPTY = { status: "empty", message: "This period has no complete day of data yet." } as const;
 
 export interface GoogleOverview {
   /** Null when the selected period has no complete day of data yet. */
@@ -29,7 +63,7 @@ export interface GoogleOverview {
   traffic: GoogleSource<TrafficTotals>;
 }
 
-async function load<T>(fetcher: () => Promise<Comparison<T>>): Promise<GoogleSource<T>> {
+async function load<T>(fetcher: () => Promise<T>): Promise<SourceResult<T>> {
   try {
     return { status: "ok", data: await fetcher() };
   } catch (error) {
@@ -49,12 +83,75 @@ export async function getGoogleOverview(range: DateRange, today: ISODate): Promi
   await requireSessionUser();
   const window = reportWindow(range, today);
   if (!window) {
-    const empty = { status: "empty", message: "This period has no complete day of data yet." } as const;
-    return { window: null, search: empty, traffic: empty };
+    return { window: null, search: EMPTY, traffic: EMPTY };
   }
   const [search, traffic] = await Promise.all([
     load(() => fetchSearchTotals(window)),
     load(() => fetchTrafficTotals(window)),
   ]);
   return { window, search, traffic };
+}
+
+export interface SearchAnalytics extends SearchBreakdown {
+  totals: Comparison<SearchTotals>;
+}
+
+export interface TrafficAnalytics {
+  totals: Comparison<TrafficTotals>;
+  breakdown: TrafficBreakdown;
+}
+
+/**
+ * Everything the Traffic & SEO pages show from Search Console for the selected
+ * period: totals against the previous period, daily rows, top queries and pages.
+ */
+export async function getSearchAnalytics(
+  range: DateRange,
+  today: ISODate,
+): Promise<{ window: ReportWindow | null; search: SourceResult<SearchAnalytics> }> {
+  await requireSessionUser();
+  const window = reportWindow(range, today);
+  if (!window) return { window, search: EMPTY };
+  const search = await load(async () => {
+    const [totals, breakdown] = await Promise.all([fetchSearchTotals(window), fetchSearchBreakdown(window)]);
+    return { totals, ...breakdown };
+  });
+  return { window, search };
+}
+
+/** GA4 for the selected period: totals, channels, daily sessions, organic landing pages. */
+export async function getTrafficAnalytics(
+  range: DateRange,
+  today: ISODate,
+): Promise<{ window: ReportWindow | null; traffic: SourceResult<TrafficAnalytics> }> {
+  await requireSessionUser();
+  const window = reportWindow(range, today);
+  if (!window) return { window, traffic: EMPTY };
+  const traffic = await load(async () => {
+    const [totals, breakdown] = await Promise.all([fetchTrafficTotals(window), fetchTrafficBreakdown(window)]);
+    return { totals, breakdown };
+  });
+  return { window, traffic };
+}
+
+/** GA4 engagement for Behavior Analytics, for the selected period against the one before. */
+export async function getBehavior(
+  range: DateRange,
+  today: ISODate,
+): Promise<{ window: ReportWindow | null; behavior: SourceResult<BehaviorData> }> {
+  await requireSessionUser();
+  const window = reportWindow(range, today);
+  if (!window) return { window, behavior: EMPTY };
+  return { window, behavior: await load(() => fetchBehavior(window)) };
+}
+
+/** GA4 visits from social networks, for the website side of Social Analytics. */
+export async function getSocialTraffic(
+  range: DateRange,
+  today: ISODate,
+): Promise<{ window: ReportWindow | null; social: SourceResult<SocialTraffic> }> {
+  await requireSessionUser();
+  const window = reportWindow(range, today);
+  if (!window) return { window, social: EMPTY };
+  return { window, social: await load(() => fetchSocialTraffic(window)) };
 }

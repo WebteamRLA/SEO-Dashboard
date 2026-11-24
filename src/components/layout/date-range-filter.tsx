@@ -76,17 +76,16 @@ export function DateRangeFilter({ today }: { today: ISODate }) {
       <PopoverTrigger asChild>
         <Button
           variant="outline"
-          size="sm"
           aria-busy={isPending}
           aria-label={`Reporting period: ${periodLabel(period)}, ${formatRange(period.range)}`}
-          className="max-w-[60vw] gap-1.5 bg-card"
+          className="h-[38px] max-w-[60vw] gap-2 px-3 text-sm font-normal text-ink"
         >
-          <CalendarDays className="size-4 text-muted-foreground" aria-hidden />
+          <CalendarDays className="size-4 text-ink-quiet" aria-hidden />
           <span className="truncate font-medium">{periodLabel(period)}</span>
           {period.preset === "custom" ? null : (
-            <span className="hidden text-muted-foreground lg:inline">· {formatRange(period.range)}</span>
+            <span className="hidden text-ink-quiet lg:inline">· {formatRange(period.range)}</span>
           )}
-          <ChevronDown className="size-3.5 text-muted-foreground" aria-hidden />
+          <ChevronDown className="size-3.5 text-ink-quiet" aria-hidden />
         </Button>
       </PopoverTrigger>
       <PopoverContent align="end" className="w-auto max-w-[calc(100vw-1rem)] p-0">
@@ -101,12 +100,12 @@ export function DateRangeFilter({ today }: { today: ISODate }) {
                     aria-pressed={active}
                     onClick={() => apply({ preset: preset.id, range: presetRange(preset.id, today) })}
                     className={cn(
-                      "flex w-full items-center justify-between gap-2 rounded-md px-2.5 py-1.5 text-left text-sm outline-none hover:bg-muted focus-visible:ring-2 focus-visible:ring-ring",
-                      active && "bg-accent font-medium text-accent-foreground hover:bg-accent",
+                      "flex h-9 w-full items-center justify-between gap-2 rounded-md px-2 text-left text-sm text-ink outline-none hover:bg-muted focus-visible:ring-2 focus-visible:ring-ring",
+                      active && "bg-accent font-semibold text-ink hover:bg-accent",
                     )}
                   >
                     {preset.label}
-                    {active ? <Check className="size-4" aria-hidden /> : null}
+                    {active ? <Check className="size-4 text-primary" strokeWidth={2.4} aria-hidden /> : null}
                   </button>
                 </li>
               );

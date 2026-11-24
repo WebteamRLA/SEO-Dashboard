@@ -1,40 +1,38 @@
 "use client";
 
-import { useState, useTransition, type FormEvent } from "react";
+import { useState, useTransition } from "react";
 import { toast } from "sonner";
 import { ConfirmDialog } from "@/components/data/confirm-dialog";
+import { Panel } from "@/components/data/panel";
 import { DataTable, type Column } from "@/components/data/data-table";
 import { StatusBadge } from "@/components/data/status-badge";
 import { Button } from "@/components/ui/button";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { ROLE_LABELS, ROLES, type AccessMember, type Role } from "@/lib/types/auth";
-import { inviteMember, removeMember, resendInvite, type TeamActionResult } from "@/server/team/actions";
+import { ROLE_LABELS, type AccessMember } from "@/lib/types/auth";
+import { removeMember, resendInvite, type TeamActionResult } from "@/server/team/actions";
+import { InviteForm, showResult } from "./invite-form";
 import { MEMBER_STATUS_META } from "./settings-meta";
 
-const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+const AVATAR_TONES = [
+  "bg-[#e6f2fd] text-[#0060ad]",
+  "bg-[#e3f7ec] text-[#0f6b3f]",
+  "bg-[#efe6fb] text-[#6d28d9]",
+  "bg-[#fef3dc] text-[#92400e]",
+];
 
-// Only admin is enforced today (Team & Access changes). Manager and member differ
-// once role-based permissions arrive.
-const ROLE_HINTS: Record<Role, string> = {
-  admin: "Can use the whole dashboard and invite or remove people.",
-  manager: "Can use the dashboard. Cannot invite or remove people.",
-  member: "Can use the dashboard. Cannot invite or remove people.",
-};
+function initials(member: AccessMember) {
+  const source = member.name?.trim() || member.email;
+  const parts = source.split(/[\s@.]+/).filter(Boolean);
+  const letters = member.name?.trim() ? parts.slice(0, 2).map((part) => part[0]).join("") : parts[0]?.[0] ?? "?";
+  return letters.toUpperCase();
+}
 
-function showResult(result: TeamActionResult) {
-  if (result.status === "success") toast.success(result.message);
-  else if (result.status === "warning") toast.warning(result.message);
-  else toast.error(result.message);
+function Avatar({ member }: { member: AccessMember }) {
+  const tone = AVATAR_TONES[[...member.email].reduce((sum, char) => sum + char.charCodeAt(0), 0) % AVATAR_TONES.length];
+  return (
+    <span aria-hidden className={`flex size-9 shrink-0 items-center justify-center rounded-full text-xs font-bold ${tone}`}>
+      {initials(member)}
+    </span>
+  );
 }
 
 export function TeamMembers({
@@ -46,7 +44,6 @@ export function TeamMembers({
   currentEmail: string;
   canManage: boolean;
 }) {
-  const [inviteOpen, setInviteOpen] = useState(false);
   const [pendingRemoval, setPendingRemoval] = useState<AccessMember | null>(null);
   const [busyEmail, setBusyEmail] = useState<string | null>(null);
   const [, startTransition] = useTransition();
@@ -67,17 +64,22 @@ export function TeamMembers({
   const columns: Column<AccessMember>[] = [
     {
       id: "name",
-      header: "Member",
+      header: "Person",
       cell: (member) => (
-        <span className="font-medium">
-          {member.name ?? member.email}
-          {member.email === currentEmail ? <span className="ml-1.5 text-xs font-normal text-muted-foreground">(you)</span> : null}
+        <span className="flex items-center gap-3">
+          <Avatar member={member} />
+          <span className="flex min-w-0 flex-col leading-snug">
+            <span className="truncate text-sm font-semibold text-ink">
+              {member.name ?? member.email}
+              {member.email === currentEmail ? <span className="ml-1.5 text-xs font-normal text-ink-quiet">(you)</span> : null}
+            </span>
+            {member.name ? <span className="truncate text-xs text-ink-quiet">{member.email}</span> : null}
+          </span>
         </span>
       ),
       sortValue: (member) => (member.name ?? member.email).toLowerCase(),
     },
-    { id: "email", header: "Email", hideBelow: "md", cell: (member) => <span className="text-muted-foreground">{member.email}</span>, sortValue: (member) => member.email },
-    { id: "role", header: "Role", cell: (member) => ROLE_LABELS[member.role], sortValue: (member) => member.role },
+    { id: "role", header: "Role", cell: (member) => <span className="text-sm text-ink-body">{ROLE_LABELS[member.role]}</span>, sortValue: (member) => member.role },
     {
       id: "status",
       header: "Status",
@@ -92,8 +94,8 @@ export function TeamMembers({
       header: "Access",
       align: "right",
       cell: (member) => {
-        if (member.bootstrap) return <span className="text-xs text-muted-foreground">Admin set in server settings</span>;
-        if (member.email === currentEmail) return <span className="text-xs text-muted-foreground">You</span>;
+        if (member.bootstrap) return <span className="text-xs text-ink-quiet">Admin set in server settings</span>;
+        if (member.email === currentEmail) return <span className="text-xs text-ink-quiet">You</span>;
         if (!canManage) return null;
         const busy = busyEmail === member.email;
         return (
@@ -125,28 +127,33 @@ export function TeamMembers({
   ];
 
   return (
-    <section aria-labelledby="team-heading" className="flex flex-col gap-3">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div>
-          <h2 id="team-heading" className="text-sm font-semibold">Team and access</h2>
-          <p className="text-sm text-muted-foreground">
-            {canManage
-              ? "Who can sign in to this dashboard. Invited people sign in with the Google account for their email."
-              : "Who can sign in to this dashboard. Only admins can invite or remove people."}
-          </p>
-        </div>
-        {canManage ? <Button onClick={() => setInviteOpen(true)}>Invite member</Button> : null}
-      </div>
+    <div className="flex flex-col gap-6">
+      {canManage ? (
+        <Panel
+          id="invite"
+          title="Invite people"
+          description="People invited here sign in with their Google account."
+        >
+          <InviteForm />
+        </Panel>
+      ) : null}
 
-      <DataTable
-        caption="Team members and their roles"
-        columns={columns}
-        rows={members}
-        getRowId={(member) => member.email}
-        defaultSort={{ columnId: "name", direction: "asc" }}
-      />
-
-      {canManage ? <InviteDialog open={inviteOpen} onOpenChange={setInviteOpen} /> : null}
+      <Panel
+        id="team"
+        title="People with access"
+        description={`${members.length} ${members.length === 1 ? "person" : "people"} can sign in to this dashboard.${canManage ? "" : " Only admins can invite or remove people."}`}
+        flush
+      >
+        <DataTable
+          bare
+          footerSummary
+          caption="Team members and their roles"
+          columns={columns}
+          rows={members}
+          getRowId={(member) => member.email}
+          defaultSort={{ columnId: "name", direction: "asc" }}
+        />
+      </Panel>
 
       <ConfirmDialog
         open={pendingRemoval !== null}
@@ -166,118 +173,6 @@ export function TeamMembers({
           if (member) run(member.email, () => removeMember(member.email));
         }}
       />
-    </section>
-  );
-}
-
-function InviteDialog({ open, onOpenChange }: { open: boolean; onOpenChange: (open: boolean) => void }) {
-  const [email, setEmail] = useState("");
-  const [role, setRole] = useState<Role>("member");
-  const [error, setError] = useState<string | null>(null);
-  const [pending, startTransition] = useTransition();
-
-  function handleOpenChange(next: boolean) {
-    if (pending) return;
-    if (!next) {
-      setEmail("");
-      setRole("member");
-      setError(null);
-    }
-    onOpenChange(next);
-  }
-
-  function handleSubmit(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    const trimmed = email.trim();
-    if (!EMAIL_PATTERN.test(trimmed)) {
-      setError("Enter an email address, such as name@example.com.");
-      return;
-    }
-    startTransition(async () => {
-      try {
-        const result = await inviteMember({ email: trimmed, role });
-        if (result.status === "error") {
-          // Keep the dialog open so the address can be corrected.
-          setError(result.message);
-          return;
-        }
-        showResult(result);
-        setEmail("");
-        setRole("member");
-        setError(null);
-        onOpenChange(false);
-      } catch {
-        setError("Something went wrong. Try again.");
-      }
-    });
-  }
-
-  return (
-    <Dialog open={open} onOpenChange={handleOpenChange}>
-      <DialogContent>
-        <form onSubmit={handleSubmit} noValidate className="flex flex-col gap-4">
-          <DialogHeader>
-            <DialogTitle>Invite member</DialogTitle>
-            <DialogDescription>
-              They get an email with a sign-in link, and can sign in with the Google account for this address.
-            </DialogDescription>
-          </DialogHeader>
-
-          <div className="flex flex-col gap-1.5">
-            <Label htmlFor="invite-email">Email</Label>
-            <Input
-              id="invite-email"
-              type="email"
-              autoComplete="off"
-              value={email}
-              disabled={pending}
-              onChange={(event) => {
-                setEmail(event.target.value);
-                if (error) setError(null);
-              }}
-              aria-invalid={error ? true : undefined}
-              aria-describedby={error ? "invite-email-error" : undefined}
-            />
-            {error ? (
-              <p id="invite-email-error" role="alert" className="text-xs text-destructive">
-                {error}
-              </p>
-            ) : null}
-          </div>
-
-          <div className="flex flex-col gap-1.5">
-            <Label htmlFor="invite-role">Role</Label>
-            <Select
-              value={role}
-              disabled={pending}
-              onValueChange={(value) => {
-                if ((ROLES as readonly string[]).includes(value)) setRole(value as Role);
-              }}
-            >
-              <SelectTrigger id="invite-role" className="w-full">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {ROLES.map((option) => (
-                  <SelectItem key={option} value={option}>
-                    {ROLE_LABELS[option]}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            <p className="text-xs text-muted-foreground">{ROLE_HINTS[role]}</p>
-          </div>
-
-          <DialogFooter>
-            <Button type="button" variant="outline" disabled={pending} onClick={() => handleOpenChange(false)}>
-              Cancel
-            </Button>
-            <Button type="submit" disabled={pending}>
-              {pending ? "Sending…" : "Send invite"}
-            </Button>
-          </DialogFooter>
-        </form>
-      </DialogContent>
-    </Dialog>
+    </div>
   );
 }

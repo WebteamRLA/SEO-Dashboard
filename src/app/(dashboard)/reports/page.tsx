@@ -1,26 +1,23 @@
 import type { Metadata } from "next";
-import { PreviewNotice } from "@/components/data/preview-notice";
 import { PageBody, PageHeader } from "@/components/layout/page-header";
-import { MonthlyReportsTable } from "@/features/reports/monthly-reports-table";
-import { getMonthlyReports } from "@/lib/data/operations";
+import { ReportList } from "@/features/reports/report-list";
+import { getToday } from "@/lib/data/calendar";
+import { getReportList } from "@/lib/data/reports";
 
 export const metadata: Metadata = { title: "Monthly Reports" };
 
 export default async function MonthlyReportsPage() {
-  const reports = await getMonthlyReports();
-
+  const rows = await getReportList(await getToday());
   return (
     <PageBody>
       <PageHeader
-        phase="P2"
         title="Monthly Reports"
-        description="One report per month, newest first. Figures match the sample data on the other pages."
+        description="One report per complete month: search, traffic, enquiries, leads, work and strategy progress."
       />
-      <PreviewNotice phase="P2">
-        Reports are sample previews. Generating, downloading and sending reports is planned for Phase 2 and is not available yet.
-      </PreviewNotice>
-
-      <MonthlyReportsTable reports={reports} />
+      <ReportList rows={rows} />
+      <p className="text-xs text-ink-quiet">
+        Draft months show live figures. Final months show the figures frozen when they were finalised. Search Console data starts in January 2026.
+      </p>
     </PageBody>
   );
 }

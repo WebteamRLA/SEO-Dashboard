@@ -1,19 +1,16 @@
 "use client";
 
 import { useMemo } from "react";
-import { DollarSign } from "lucide-react";
 import { ChartCard } from "@/components/charts/chart-card";
-import { BarTrendChart, type ChartSeries } from "@/components/charts/charts";
-import { RankedBars } from "@/components/charts/ranked-bars";
-import { EmptyState } from "@/components/data/empty-state";
+import { ColumnChart } from "@/components/charts/column-chart";
 import { MetricCard, MetricGrid } from "@/components/data/metric-card";
 import { useLeads } from "@/features/leads/leads-store";
+import { formatMoneyShort } from "@/features/leads/lead-ui";
+import { WonRevenueBars } from "@/features/leads/lead-summary";
 import { computeMonthlyRevenue, computeRevenueBySource, computeRevenueSummary } from "@/lib/domain/leads";
 import { isWithin, type DateRange } from "@/lib/date-range";
-import { formatCompact, formatCurrency, formatMonthShort, formatNumber } from "@/lib/format";
+import { formatCurrency, formatMonthShort, formatNumber } from "@/lib/format";
 import type { MonthKey } from "@/lib/types";
-
-const REVENUE: ChartSeries[] = [{ key: "revenue", label: "Won revenue", slot: 1 }];
 
 export function RevenueView({
   range,
@@ -39,23 +36,30 @@ export function RevenueView({
 
   return (
     <>
-      <MetricGrid className="lg:grid-cols-3 xl:grid-cols-3">
-        <MetricCard label="Total won revenue" value={formatCurrency(summary.totalWon)} detail="Leads submitted in this period" />
-        <MetricCard label="Won deals" value={formatNumber(summary.wonDeals)} detail="Leads submitted in this period" />
+      <MetricGrid>
         <MetricCard
+          tone="amber"
+          label="Total won revenue"
+          value={formatCurrency(summary.totalWon)}
+          detail="Leads submitted in this period"
+        />
+        <MetricCard
+          tone="green"
+          label="Won deals"
+          value={formatNumber(summary.wonDeals)}
+          detail="Leads submitted in this period"
+        />
+        <MetricCard
+          tone="amber"
           label="Average deal value"
           value={formatCurrency(summary.averageDeal)}
-          detail={summary.wonDeals === 0 ? "No won deals in this period" : undefined}
+          detail={summary.wonDeals === 0 ? "No won deals in this period" : "Per won deal"}
         />
       </MetricGrid>
 
-      <p className="text-xs text-muted-foreground">
-        Revenue is grouped by the month a lead was submitted, not the month the deal was won.
-      </p>
-
       <ChartCard
         title="Monthly revenue"
-        description="Won deal value by lead submission month. Complete months only"
+        description="Won deal value by the month the lead was submitted, not the month it was won. Complete months only"
         table={{
           columns: ["Month", "Won revenue", "Won deals"],
           rows: monthly.map((row) => ({
@@ -64,17 +68,17 @@ export function RevenueView({
           })),
         }}
       >
-        <BarTrendChart
-          data={monthly.map((row) => ({ label: formatMonthShort(row.month), revenue: row.revenue }))}
-          series={REVENUE}
-          format={formatCurrency}
-          axisFormat={formatCompact}
+        <ColumnChart
+          label="Won revenue by lead submission month"
+          data={monthly.map((row) => ({ label: formatMonthShort(row.month), value: row.revenue }))}
+          formatValue={formatMoneyShort}
+          height={200}
         />
       </ChartCard>
 
       <ChartCard
         title="Revenue by lead source"
-        description="Won revenue from leads submitted in this period"
+        description={`Won revenue from leads submitted in this period: ${periodText}`}
         table={{
           columns: ["Source", "Won revenue", "Won deals"],
           rows: sources.map((row) => ({
@@ -83,14 +87,10 @@ export function RevenueView({
           })),
         }}
       >
-        {sources.length === 0 ? (
-          <EmptyState icon={DollarSign} title={`No won deals in ${periodText}`} description="Mark a lead as Won in the pipeline and it appears here." />
-        ) : (
-          <RankedBars
-            label="Won revenue by lead source"
-            rows={sources.map((row) => ({ label: row.source, value: row.revenue, display: formatCurrency(row.revenue) }))}
-          />
-        )}
+        <WonRevenueBars
+          rows={sources}
+          emptyText={`No won deals in ${periodText}. Mark a lead as Won in the pipeline and it appears here.`}
+        />
       </ChartCard>
     </>
   );

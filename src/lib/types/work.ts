@@ -30,6 +30,8 @@ export interface Task {
   completedDate: ISODate | null;
   /** Exact completion time, when the source has one (Teamwork does). */
   completedAt?: string | null;
+  /** Link to the task in its source system (Teamwork). Absent for sample data. */
+  url?: string;
 }
 
 export interface TaskCounts {

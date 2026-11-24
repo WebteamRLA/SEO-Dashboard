@@ -31,10 +31,10 @@ export default async function WorkPage({
     return (
       <PageBody>
         <PageHeader title="Monthly Work Tracker" description={`Live from Teamwork · ${periodText}`} />
-        <div className="flex items-start gap-2.5 rounded-lg border border-border bg-card px-3.5 py-3 text-sm">
+        <div className="flex items-start gap-2.5 rounded-xl border border-[var(--tile-amber)] bg-[#fffbeb] px-4 py-3 text-[13px]">
           <Info className="mt-0.5 size-4 shrink-0 text-status-warning" aria-hidden />
-          <p className="text-muted-foreground">
-            <span className="font-medium text-foreground">Teamwork is not available right now.</span>{" "}
+          <p className="text-ink-body">
+            <span className="font-semibold text-ink">Teamwork is not available right now.</span>{" "}
             {message}
           </p>
         </div>

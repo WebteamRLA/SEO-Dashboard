@@ -1,14 +1,15 @@
 import {
   Activity,
-  BarChart3,
   Bot,
+  ChartNoAxesColumn,
   CircleDollarSign,
-  ClipboardList,
   FileText,
-  LayoutDashboard,
+  House,
+  Inbox,
   Map,
   Settings,
-  Users,
+  SquareCheck,
+  TrendingUp,
   type LucideIcon,
 } from "lucide-react";
 import type { Phase } from "@/lib/types";
@@ -16,86 +17,118 @@ import type { Phase } from "@/lib/types";
 export interface NavItem {
   label: string;
   href: string;
+  /** Shorter name for the section tab bar, when the page shows one. */
+  tabLabel?: string;
   /** Shown as a chip for pages not yet delivered. P1 pages carry none. */
   phase?: Phase;
   /** The topbar date range filter applies to this page. */
   periodScoped?: boolean;
 }
 
+/** The sidebar sections. The footer section is pinned to the bottom of the sidebar. */
+export type NavSection = "main" | "results" | "work" | "reports" | "footer";
+
+export const NAV_SECTION_LABEL: Partial<Record<NavSection, string>> = {
+  results: "Results",
+  work: "SEO work",
+};
+
 export interface NavGroup {
   id: string;
   label: string;
   icon: LucideIcon;
-  /** A group with one item renders as a plain link. */
+  section: NavSection;
+  /**
+   * The routes this sidebar link owns. The first is where the link goes. With
+   * `tabs`, the pages render a tab bar so every route stays one click away.
+   */
   items: NavItem[];
+  tabs?: boolean;
+  /** Chip on the sidebar link itself, for a section that is not delivered yet. */
+  phase?: Phase;
 }
 
 export const NAVIGATION: NavGroup[] = [
   {
     id: "overview",
     label: "Overview",
-    icon: LayoutDashboard,
+    icon: House,
+    section: "main",
     items: [{ label: "Overview", href: "/overview", periodScoped: true }],
   },
   {
-    id: "work",
-    label: "Work",
-    icon: ClipboardList,
-    items: [{ label: "Monthly Work Tracker", href: "/work", periodScoped: true }],
+    id: "search",
+    label: "Search performance",
+    icon: TrendingUp,
+    section: "results",
+    items: [{ label: "Search Performance", href: "/traffic-seo/search-performance", periodScoped: true }],
   },
   {
-    id: "roadmap",
-    label: "SEO Roadmap",
-    icon: Map,
-    items: [{ label: "Strategy Roadmap", href: "/roadmap", periodScoped: true }],
+    id: "traffic",
+    label: "Traffic",
+    icon: ChartNoAxesColumn,
+    section: "results",
+    tabs: true,
+    items: [
+      { label: "SEO Overview", tabLabel: "Overview", href: "/traffic-seo", periodScoped: true },
+      { label: "Visitors & Traffic", tabLabel: "Visitors", href: "/traffic-seo/visitors", periodScoped: true },
+      { label: "Behavior Analytics", tabLabel: "Behavior", href: "/traffic-seo/behavior", periodScoped: true },
+      { label: "Social Analytics", tabLabel: "Social", href: "/traffic-seo/social", periodScoped: true },
+    ],
   },
   {
     id: "leads",
     label: "Leads",
-    icon: Users,
+    icon: Inbox,
+    section: "results",
+    // List and Pipeline switch with a toggle inside the page, as in the design.
     items: [
-      { label: "Lead Inbox", href: "/leads" },
-      { label: "Lead Pipeline", href: "/leads/pipeline" },
-    ],
-  },
-  {
-    id: "traffic",
-    label: "Traffic & SEO",
-    icon: BarChart3,
-    items: [
-      { label: "SEO Overview", href: "/traffic-seo", phase: "P2", periodScoped: true },
-      { label: "Search Performance", href: "/traffic-seo/search-performance", phase: "P2", periodScoped: true },
-      { label: "Visitors & Traffic", href: "/traffic-seo/visitors", phase: "P2", periodScoped: true },
-      { label: "Behavior Analytics", href: "/traffic-seo/behavior", phase: "P3" },
-      { label: "Social Analytics", href: "/traffic-seo/social", phase: "P3" },
+      { label: "Lead Inbox", tabLabel: "List", href: "/leads" },
+      { label: "Lead Pipeline", tabLabel: "Pipeline", href: "/leads/pipeline" },
     ],
   },
   {
     id: "revenue",
     label: "Revenue",
     icon: CircleDollarSign,
+    section: "results",
+    phase: "P2",
     items: [{ label: "Revenue Overview", href: "/revenue", phase: "P2", periodScoped: true }],
   },
   {
     id: "site-health",
-    label: "Site Health",
+    label: "Site health",
     icon: Activity,
+    section: "results",
+    phase: "P2",
+    tabs: true,
     items: [
-      { label: "Form Health", href: "/site-health/forms", phase: "P2" },
-      { label: "Broken Links", href: "/site-health/broken-links", phase: "P2" },
-      { label: "Issue Log", href: "/site-health/issues", phase: "P2" },
+      { label: "Form Health", tabLabel: "Forms", href: "/site-health/forms", phase: "P2" },
+      { label: "Broken Links", tabLabel: "Broken links", href: "/site-health/broken-links", phase: "P2" },
+      { label: "Issue Log", tabLabel: "Issue log", href: "/site-health/issues", phase: "P2" },
     ],
   },
   {
-    id: "reports",
-    label: "Reports",
-    icon: FileText,
-    items: [{ label: "Monthly Reports", href: "/reports", phase: "P2" }],
+    id: "work",
+    label: "Tasks",
+    icon: SquareCheck,
+    section: "work",
+    items: [{ label: "Monthly Work Tracker", href: "/work", periodScoped: true }],
+  },
+  {
+    id: "roadmap",
+    label: "Roadmap",
+    icon: Map,
+    section: "work",
+    items: [{ label: "Strategy Roadmap", href: "/roadmap" }],
   },
   {
     id: "ai-agents",
-    label: "AI Agents",
+    label: "AI agents",
     icon: Bot,
+    section: "work",
+    phase: "P3",
+    // Each agent opens from its card on the overview page.
     items: [
       { label: "AI Agents Overview", href: "/ai-agents", phase: "P3" },
       { label: "Broken Link Agent", href: "/ai-agents/broken-link", phase: "P3" },
@@ -107,13 +140,22 @@ export const NAVIGATION: NavGroup[] = [
     ],
   },
   {
+    id: "reports",
+    label: "Reports",
+    icon: FileText,
+    section: "reports",
+    items: [{ label: "Monthly Reports", href: "/reports" }],
+  },
+  {
     id: "settings",
     label: "Settings",
     icon: Settings,
+    section: "footer",
+    tabs: true,
     items: [
-      { label: "Team & Access", href: "/settings/team" },
+      { label: "Team & Access", tabLabel: "Team", href: "/settings/team" },
       { label: "Notifications", href: "/settings/notifications" },
-      { label: "Delivery Roadmap", href: "/settings/delivery-roadmap" },
+      { label: "Delivery Roadmap", tabLabel: "Delivery roadmap", href: "/settings/delivery-roadmap" },
     ],
   },
 ];
@@ -138,4 +180,11 @@ export function findActiveNav(pathname: string): ActiveNav | null {
     }
   }
   return best;
+}
+
+/** The tab bar for a sectioned page, or null when the page has none. */
+export function findSectionTabs(pathname: string): { group: NavGroup; activeHref: string } | null {
+  const active = findActiveNav(pathname);
+  if (!active?.group.tabs) return null;
+  return { group: active.group, activeHref: active.item.href };
 }

@@ -1,4 +1,4 @@
-import type { ISODate, ISODateTime, MonthKey, Phase } from "./common";
+import type { ISODate, ISODateTime, Phase } from "./common";
 
 /* Site health -------------------------------------------------------------- */
 
@@ -40,16 +40,6 @@ export interface SiteIssue {
 /* Reports ------------------------------------------------------------------ */
 
 export type ReportStatus = "draft" | "ready" | "sent";
-
-/** Lead and revenue figures are not stored here: see `useLeads()` in the table. */
-export interface MonthlyReport {
-  id: string;
-  month: MonthKey;
-  organicClicks: number;
-  impressions: number;
-  averagePosition: number;
-  status: ReportStatus;
-}
 
 /* AI agents ---------------------------------------------------------------- */
 

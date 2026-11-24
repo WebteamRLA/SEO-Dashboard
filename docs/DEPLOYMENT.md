@@ -74,6 +74,13 @@ traces almost all of `node_modules` (about 293 MB per route, see below). Vercel 
 route traces about 9 MB and the build has 4 functions. Workers cannot compile WebAssembly from bytes
 at runtime, which is why Cloudflare keeps the workerd client.
 
+### Function region
+
+`vercel.json` pins functions to `sin1` (Singapore), next to the Neon database in `ap-southeast-1`.
+On the default `iad1` every query crossed the Pacific: measured 2026-11-24, a page with one query
+took about 0.6 s against 0.4 s without one, and a signed-in page makes three to five in a row. If
+the database moves, move the region with it.
+
 ## Prisma on Workers
 
 - Create a client per request with `createDb()`. A shared global client makes later requests fail.

@@ -1,6 +1,29 @@
 import "server-only";
+import { createSwrCache } from "@/server/cache/swr";
 import { fetchAccessToken, type AccessToken } from "./credentials";
 import { getGa4PropertyId, getSearchConsoleSite, getServiceAccount } from "./config";
+import {
+  ga4BreakdownRequest,
+  parseGa4Breakdown,
+  parseKeywords,
+  parsePages,
+  parseSearchDays,
+  PREVIOUS_QUERY_ROWS,
+  searchConsoleBreakdown,
+  TOP_ROWS,
+  type KeywordRow,
+  type PageRow,
+  type SearchDay,
+  type TrafficBreakdown,
+} from "./analytics";
+import {
+  behaviorRequests,
+  parseBehavior,
+  parseSocial,
+  socialRequest,
+  type BehaviorData,
+  type SocialTraffic,
+} from "./engagement";
 import {
   ga4BatchRequest,
   parseGa4Batch,
@@ -24,6 +47,8 @@ export class GoogleRequestError extends Error {
 const TIMEOUT_MS = 8_000;
 /** Google reports change slowly; this keeps page loads off the API quota. */
 const REPORT_TTL_MS = 10 * 60_000;
+/** Older reports are still shown at once while they refresh in the background. */
+const STALE_MS = 6 * 60 * 60_000;
 /** A failure is remembered briefly, so a broken credential is not retried on every load. */
 const FAILURE_TTL_MS = 60_000;
 
@@ -84,24 +109,16 @@ async function post<T>(service: string, url: string, body: unknown): Promise<T> 
   return json as T;
 }
 
-const cache = new Map<string, { at: number; ttl: number; promise: Promise<unknown> }>();
-
 /**
- * Caches the promise, so identical requests in flight share one call. A
- * success is kept for REPORT_TTL_MS, a failure for FAILURE_TTL_MS.
+ * Google reports change slowly. A report under REPORT_TTL_MS old is served as
+ * is; one up to STALE_MS old is served at once while a background request
+ * refreshes it; identical requests in flight share one call. A failure is
+ * remembered for FAILURE_TTL_MS.
  */
+const reports = createSwrCache<unknown>({ freshMs: REPORT_TTL_MS, staleMs: STALE_MS, failureMs: FAILURE_TTL_MS });
+
 function cached<T>(key: string, load: () => Promise<T>): Promise<T> {
-  const hit = cache.get(key);
-  if (hit && Date.now() - hit.at < hit.ttl) return hit.promise as Promise<T>;
-  const entry = { at: Date.now(), ttl: REPORT_TTL_MS, promise: load() as Promise<unknown> };
-  entry.promise.catch(() => {
-    entry.at = Date.now();
-    entry.ttl = FAILURE_TTL_MS;
-  });
-  cache.set(key, entry);
-  // Bounded: one entry per period people have looked at in the last few minutes.
-  if (cache.size > 100) cache.delete(cache.keys().next().value as string);
-  return entry.promise as Promise<T>;
+  return reports(key, load) as Promise<T>;
 }
 
 export async function fetchSearchTotals(window: ReportWindow): Promise<Comparison<SearchTotals>> {
@@ -121,5 +138,65 @@ export async function fetchTrafficTotals(window: ReportWindow): Promise<Comparis
   const url = `https://analyticsdata.googleapis.com/v1beta/properties/${property}:batchRunReports`;
   return cached(`ga4|${property}|${window.current.from}|${window.current.to}`, async () =>
     parseGa4Batch(await post("Google Analytics", url, ga4BatchRequest(window))),
+  );
+}
+
+export interface SearchBreakdown {
+  daily: SearchDay[];
+  keywords: KeywordRow[];
+  pages: PageRow[];
+}
+
+/**
+ * Daily rows, top queries (with position change against the previous period)
+ * and top pages for the window. Four Search Console calls, made in parallel.
+ */
+export async function fetchSearchBreakdown(window: ReportWindow): Promise<SearchBreakdown> {
+  const site = getSearchConsoleSite();
+  const url = `https://www.googleapis.com${searchConsolePath(site)}`;
+  return cached(`gsc-breakdown|${site}|${window.current.from}|${window.current.to}`, async () => {
+    const [daily, queries, previousQueries, pages] = await Promise.all([
+      post("Search Console", url, searchConsoleBreakdown(window.current, "date", 1000)),
+      post("Search Console", url, searchConsoleBreakdown(window.current, "query", TOP_ROWS)),
+      post("Search Console", url, searchConsoleBreakdown(window.previous, "query", PREVIOUS_QUERY_ROWS)),
+      post("Search Console", url, searchConsoleBreakdown(window.current, "page", TOP_ROWS)),
+    ]);
+    return {
+      daily: parseSearchDays(daily),
+      keywords: parseKeywords(queries, previousQueries),
+      pages: parsePages(pages),
+    };
+  });
+}
+
+/** Channels, daily sessions and organic landing pages for the window, in one GA4 batch call. */
+export async function fetchTrafficBreakdown(window: ReportWindow): Promise<TrafficBreakdown> {
+  const property = getGa4PropertyId();
+  const url = `https://analyticsdata.googleapis.com/v1beta/properties/${property}:batchRunReports`;
+  return cached(`ga4-breakdown|${property}|${window.current.from}|${window.current.to}`, async () =>
+    parseGa4Breakdown(await post("Google Analytics", url, ga4BreakdownRequest(window))),
+  );
+}
+
+function ga4BatchUrl(property: string): string {
+  return `https://analyticsdata.googleapis.com/v1beta/properties/${property}:batchRunReports`;
+}
+
+/** Engagement, pages, enquiry landing pages, key events and devices: two GA4 batch calls in parallel. */
+export async function fetchBehavior(window: ReportWindow): Promise<BehaviorData> {
+  const property = getGa4PropertyId();
+  const url = ga4BatchUrl(property);
+  return cached(`ga4-behavior|${property}|${window.current.from}|${window.current.to}`, async () => {
+    const [a, b] = behaviorRequests(window);
+    const [batchA, batchB] = await Promise.all([post("Google Analytics", url, a), post("Google Analytics", url, b)]);
+    return parseBehavior(batchA, batchB);
+  });
+}
+
+/** Visits from social networks to the website, in one GA4 batch call. */
+export async function fetchSocialTraffic(window: ReportWindow): Promise<SocialTraffic> {
+  const property = getGa4PropertyId();
+  return cached(`ga4-social|${property}|${window.current.from}|${window.current.to}`, async () =>
+    parseSocial(await post("Google Analytics", ga4BatchUrl(property), socialRequest(window))),
   );
 }

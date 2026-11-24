@@ -12,7 +12,7 @@ export function PhaseBadge({ phase, className }: { phase: Phase; className?: str
     <span
       title={PHASE_NAME[phase]}
       className={cn(
-        "inline-flex h-5 shrink-0 items-center rounded border border-border bg-muted px-1.5 text-[11px] font-medium text-muted-foreground",
+        "inline-flex h-5 shrink-0 items-center rounded-full bg-tone-neutral-bg px-2 text-[11px] font-semibold text-ink-body",
         className,
       )}
     >

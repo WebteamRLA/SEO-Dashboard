@@ -1,12 +1,15 @@
 import type { ReactNode } from "react";
-import { PhaseBadge } from "@/components/data/phase-badge";
 import type { Phase } from "@/lib/types";
 
-/** The top of every page. `phase` marks work that is not delivered yet. */
+/**
+ * The top of every page. The design carries no visible page title (the sidebar
+ * and the topbar name the page), so the title is a screen-reader heading.
+ * `description` stays available to assistive tech too. `actions` render as a
+ * right-aligned toolbar. `phase` is shown by the page's PreviewNotice instead.
+ */
 export function PageHeader({
   title,
   description,
-  phase,
   actions,
 }: {
   title: string;
@@ -15,22 +18,17 @@ export function PageHeader({
   actions?: ReactNode;
 }) {
   return (
-    <div className="flex flex-wrap items-start justify-between gap-3">
-      <div className="min-w-0">
-        <div className="flex items-center gap-2">
-          <h1 className="text-xl font-semibold tracking-tight">{title}</h1>
-          {phase ? <PhaseBadge phase={phase} /> : null}
-        </div>
-        {description ? (
-          <p className="mt-1 max-w-3xl text-sm text-muted-foreground">{description}</p>
-        ) : null}
+    <>
+      <div className="sr-only print:not-sr-only print:mb-2">
+        <h1 className="print:text-xl print:font-semibold">{title}</h1>
+        {description ? <p className="print:text-sm print:text-ink-quiet">{description}</p> : null}
       </div>
-      {actions ? <div className="flex shrink-0 items-center gap-2">{actions}</div> : null}
-    </div>
+      {actions ? <div className="flex flex-wrap items-center justify-end gap-2 print:hidden">{actions}</div> : null}
+    </>
   );
 }
 
 /** Standard vertical rhythm for a page's sections. */
 export function PageBody({ children }: { children: ReactNode }) {
-  return <div className="flex flex-col gap-5">{children}</div>;
+  return <div className="flex flex-col gap-6">{children}</div>;
 }

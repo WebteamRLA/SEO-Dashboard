@@ -2,9 +2,10 @@
 
 import { PeriodLink } from "@/components/layout/period-link";
 import { useId, useState, type FormEvent, type ReactNode } from "react";
-import { ArrowLeft, Pencil } from "lucide-react";
+import { ChevronLeft, Pencil } from "lucide-react";
 import { toast } from "sonner";
 import { EmptyState } from "@/components/data/empty-state";
+import { Panel } from "@/components/data/panel";
 import { StatusBadge } from "@/components/data/status-badge";
 import { PageBody, PageHeader } from "@/components/layout/page-header";
 import { Button } from "@/components/ui/button";
@@ -14,10 +15,12 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Textarea } from "@/components/ui/textarea";
 import { leadPatchChanges, STAGE_META } from "@/lib/domain/leads";
 import { CURRENCY, formatCurrency, formatDate, formatDateTime } from "@/lib/format";
+import { cn } from "@/lib/utils";
 import { PIPELINE_STAGES, type Lead, type LeadOrigin, type PipelineStage } from "@/lib/types";
 import { DealValueDialog } from "./deal-value-dialog";
 import { EditContactDialog } from "./edit-contact-dialog";
 import { parseDealValue } from "./lead-logic";
+import { SourceIcon } from "./lead-ui";
 import { useLeads } from "./leads-store";
 import { SpamTag } from "./spam-tag";
 
@@ -49,26 +52,35 @@ function trackingFields(lead: Lead) {
 
 function Section({ title, action, children }: { title: string; action?: ReactNode; children: ReactNode }) {
   return (
-    <section className="rounded-lg border border-border bg-card">
-      <div className="flex items-center justify-between gap-2 border-b border-border px-4 py-2.5">
-        <h2 className="text-sm font-semibold">{title}</h2>
-        {action}
-      </div>
-      <div className="p-4">{children}</div>
-    </section>
+    <Panel title={title} actions={action}>
+      {children}
+    </Panel>
   );
 }
 
-function Fields({ items }: { items: readonly { label: string; value: string | null }[] }) {
+function Fields({ items }: { items: readonly { label: string; value: ReactNode }[] }) {
   return (
-    <dl className="grid gap-x-6 gap-y-3 sm:grid-cols-2">
+    <dl className="grid gap-x-5 gap-y-3.5 sm:grid-cols-2">
       {items.map((item) => (
-        <div key={item.label} className="min-w-0">
-          <dt className="text-xs text-muted-foreground">{item.label}</dt>
-          <dd className="mt-0.5 text-sm break-words">{item.value || "—"}</dd>
+        <div key={item.label} className="flex min-w-0 flex-col gap-0.5">
+          <dt className="text-xs text-ink-quiet">{item.label}</dt>
+          <dd className="text-sm [overflow-wrap:anywhere] text-ink">{item.value || "—"}</dd>
         </div>
       ))}
     </dl>
+  );
+}
+
+/** The design's back button: a quiet chevron link above the page content. */
+function BackLink() {
+  return (
+    <PeriodLink
+      href="/leads"
+      className="-ml-1.5 inline-flex h-8 w-fit items-center gap-1 rounded-lg pr-2.5 pl-1.5 text-[13px] font-medium text-ink-body outline-none hover:bg-[#F1F3F5] focus-visible:ring-2 focus-visible:ring-ring"
+    >
+      <ChevronLeft className="size-4" aria-hidden />
+      All leads
+    </PeriodLink>
   );
 }
 
@@ -86,7 +98,7 @@ export function LeadDetail({ leadId }: { leadId: string }) {
           description="This lead is no longer in the list."
           action={
             <Button variant="outline" asChild>
-              <PeriodLink href="/leads">Back to Lead Inbox</PeriodLink>
+              <PeriodLink href="/leads">Back to all leads</PeriodLink>
             </Button>
           }
         />
@@ -108,29 +120,28 @@ export function LeadDetail({ leadId }: { leadId: string }) {
 
   return (
     <PageBody>
-      <PeriodLink
-        href="/leads"
-        className="inline-flex w-fit items-center gap-1 rounded-sm text-sm text-muted-foreground outline-none hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring"
-      >
-        <ArrowLeft className="size-4" aria-hidden />
-        Lead Inbox
-      </PeriodLink>
-      <PageHeader
-        title={lead.name}
-        description={lead.company || undefined}
-        actions={
-          <>
-            {lead.spamFilteredBy ? <SpamTag by={lead.spamFilteredBy} /> : null}
-            <StatusBadge tone={STAGE_META[lead.stage].tone} label={STAGE_META[lead.stage].label} />
-          </>
-        }
-      />
-        <div className="grid items-start gap-5 lg:grid-cols-2">
-          <div className="flex flex-col gap-5">
+      <PageHeader title={lead.name} description={lead.company || undefined} />
+      <div className="flex flex-col gap-4">
+        <BackLink />
+        {/* The visible name repeats the screen-reader page heading above. */}
+        <div aria-hidden className="flex min-w-0 flex-col gap-1.5">
+          <p className="text-xl leading-tight font-semibold text-ink [overflow-wrap:anywhere]">{lead.name}</p>
+          {lead.company && lead.company !== lead.name ? <p className="text-sm text-ink-quiet">{lead.company}</p> : null}
+        </div>
+        <div className="flex flex-wrap items-center gap-2">
+          <StatusBadge tone={STAGE_META[lead.stage].tone} label={STAGE_META[lead.stage].label} />
+          <span className={cn("text-[13px] font-semibold tabular-nums", lead.stage === "won" ? "text-tone-good-fg" : "text-ink")}>
+            {lead.dealValue === null ? <span className="font-normal text-ink-quiet">No deal value yet</span> : formatCurrency(lead.dealValue)}
+          </span>
+          {lead.spamFilteredBy ? <SpamTag by={lead.spamFilteredBy} /> : null}
+        </div>
+      </div>
+        <div className="grid items-start gap-6 lg:grid-cols-2">
+          <div className="flex flex-col gap-6">
             <Section
-              title="Contact Information"
+              title="Contact information"
               action={
-                <Button variant="outline" size="sm" onClick={() => setEditOpen(true)}>
+                <Button variant="outline" size="sm" onClick={() => setEditOpen(true)} aria-label="Edit contact information">
                   <Pencil aria-hidden />
                   Edit
                 </Button>
@@ -145,12 +156,12 @@ export function LeadDetail({ leadId }: { leadId: string }) {
                 ]}
               />
             </Section>
-            <Section title="Submission Information">
-              <div className="flex flex-col gap-3">
+            <Section title="Submission">
+              <div className="flex flex-col gap-3.5">
                 {lead.message ? (
-                  <div>
-                    <p className="text-xs text-muted-foreground">Original message</p>
-                    <p className="mt-0.5 text-sm whitespace-pre-wrap">{lead.message}</p>
+                  <div className="flex flex-col gap-1">
+                    <p className="text-xs text-ink-quiet">Original message</p>
+                    <p className="rounded-lg bg-[#F9FAFB] px-3.5 py-3 text-sm leading-[1.55] whitespace-pre-wrap text-ink">{lead.message}</p>
                   </div>
                 ) : null}
                 <Fields
@@ -163,10 +174,18 @@ export function LeadDetail({ leadId }: { leadId: string }) {
                 />
               </div>
             </Section>
-            <Section title="Attribution">
+            <Section title="Where they came from">
               <Fields
                 items={[
-                  { label: "Source", value: lead.attribution.source },
+                  {
+                    label: "Source",
+                    value: (
+                      <span className="flex items-center gap-2">
+                        <SourceIcon source={lead.attribution.source} />
+                        {lead.attribution.source}
+                      </span>
+                    ),
+                  },
                   { label: "Heard from", value: lead.attribution.heardFrom },
                   ...trackingFields(lead),
                 ]}
@@ -174,8 +193,8 @@ export function LeadDetail({ leadId }: { leadId: string }) {
             </Section>
             {lead.origin === "sheet" ? <SheetRecord lead={lead} /> : null}
           </div>
-          <div className="flex flex-col gap-5">
-            <Section title="Lead Management">
+          <div className="flex flex-col gap-6">
+            <Section title="Lead management">
               <div className="flex flex-col gap-4">
                 <div className="grid gap-4 sm:grid-cols-2">
                   <StageField stage={lead.stage} onChange={changeStage} />
@@ -185,17 +204,21 @@ export function LeadDetail({ leadId }: { leadId: string }) {
                 <NotesField lead={lead} onAdd={(body) => addNote(lead.id, body)} />
               </div>
             </Section>
-            <Section title="Activity History">
+            <Section title="Activity">
               {lead.activity.length === 0 ? (
-                <p className="text-sm text-muted-foreground">No activity recorded yet.</p>
+                <p className="text-sm text-ink-quiet">No activity recorded yet.</p>
               ) : (
                 <ol className="flex flex-col">
                   {[...lead.activity]
                     .sort((a, b) => b.createdAt.localeCompare(a.createdAt))
-                    .map((entry) => (
-                      <li key={entry.id} className="flex flex-col gap-0.5 border-b border-border py-2.5 first:pt-0 last:border-b-0 last:pb-0">
-                        <p className="text-sm">{entry.description}</p>
-                        <p className="text-xs text-muted-foreground">
+                    .map((entry, index, all) => (
+                      <li key={entry.id} className="relative flex flex-col gap-px pb-3.5 pl-5 last:pb-0">
+                        <span aria-hidden className="absolute top-1.5 left-[3px] size-2 rounded-full bg-bar-muted" />
+                        {index < all.length - 1 ? (
+                          <span aria-hidden className="absolute top-4 bottom-0 left-1.5 w-0.5 bg-line" />
+                        ) : null}
+                        <p className="text-sm text-ink">{entry.description}</p>
+                        <p className="text-xs text-ink-quiet">
                           {entry.actorName ?? "System"} · {formatDateTime(entry.createdAt)}
                         </p>
                       </li>
@@ -234,39 +257,39 @@ function SheetRecord({ lead }: { lead: Lead }) {
   const received = lead.payments.reduce((sum, payment) => sum + payment.amount, 0);
   const commission = lead.payments.reduce((sum, payment) => sum + (payment.commission ?? 0), 0);
   return (
-    <Section title="Pipeline Record">
+    <Section title="Pipeline record">
       <div className="flex flex-col gap-4">
-        <div>
-          <p className="text-xs text-muted-foreground">Notes / lost reason</p>
-          <p className="mt-0.5 text-sm whitespace-pre-wrap">{lead.pipelineNote || "—"}</p>
+        <div className="flex flex-col gap-0.5">
+          <p className="text-xs text-ink-quiet">Notes / lost reason</p>
+          <p className="text-sm whitespace-pre-wrap text-ink">{lead.pipelineNote || "—"}</p>
         </div>
         <Fields items={[{ label: "Close date", value: lead.wonOn ? formatDate(lead.wonOn) : null }]} />
         <div>
-          <h3 className="text-xs text-muted-foreground">Payments</h3>
+          <h3 className="text-xs text-ink-quiet">Payments</h3>
           {lead.payments.length === 0 ? (
-            <p className="mt-0.5 text-sm text-muted-foreground">None recorded.</p>
+            <p className="mt-0.5 text-sm text-ink-quiet">None recorded.</p>
           ) : (
-            <table className="mt-1 w-full text-sm">
+            <table className="mt-1.5 w-full text-[13px]">
               <caption className="sr-only">Payments received for this lead</caption>
               <thead>
-                <tr className="text-left text-xs text-muted-foreground">
-                  <th scope="col" className="py-1 font-normal">Payment</th>
-                  <th scope="col" className="py-1 text-right font-normal">Revenue</th>
-                  <th scope="col" className="py-1 text-right font-normal">Commission</th>
+                <tr className="text-left text-xs text-ink-quiet">
+                  <th scope="col" className="py-1.5 font-medium">Payment</th>
+                  <th scope="col" className="py-1.5 text-right font-medium">Revenue</th>
+                  <th scope="col" className="py-1.5 text-right font-medium">Commission</th>
                 </tr>
               </thead>
-              <tbody className="tabular-nums">
+              <tbody className="text-ink-body tabular-nums">
                 {lead.payments.map((payment) => (
-                  <tr key={payment.sequence} className="border-t border-border">
-                    <th scope="row" className="py-1.5 text-left font-normal">Month {payment.sequence}</th>
-                    <td className="py-1.5 text-right">{formatMoney(payment.amount)}</td>
-                    <td className="py-1.5 text-right">{payment.commission === null ? "—" : formatMoney(payment.commission)}</td>
+                  <tr key={payment.sequence} className="border-t border-line-soft">
+                    <th scope="row" className="py-2 text-left font-normal">Month {payment.sequence}</th>
+                    <td className="py-2 text-right">{formatMoney(payment.amount)}</td>
+                    <td className="py-2 text-right">{payment.commission === null ? "—" : formatMoney(payment.commission)}</td>
                   </tr>
                 ))}
-                <tr className="border-t border-border font-medium">
-                  <th scope="row" className="py-1.5 text-left">Total</th>
-                  <td className="py-1.5 text-right">{formatMoney(received)}</td>
-                  <td className="py-1.5 text-right">{formatMoney(commission)}</td>
+                <tr className="border-t border-line font-semibold text-ink">
+                  <th scope="row" className="py-2 text-left">Total</th>
+                  <td className="py-2 text-right">{formatMoney(received)}</td>
+                  <td className="py-2 text-right">{formatMoney(commission)}</td>
                 </tr>
               </tbody>
             </table>
@@ -436,17 +459,17 @@ function NotesField({
         </Button>
       </form>
       <div>
-        <h3 className="text-xs text-muted-foreground">Notes ({lead.notes.length})</h3>
+        <h3 className="text-[13px] font-semibold text-ink">Notes ({lead.notes.length})</h3>
         {lead.notes.length === 0 ? (
-          <p className="mt-1 text-sm text-muted-foreground">No notes yet.</p>
+          <p className="mt-1 text-sm text-ink-quiet">No notes yet.</p>
         ) : (
           <ul className="mt-1 flex flex-col">
             {[...lead.notes]
               .sort((a, b) => b.createdAt.localeCompare(a.createdAt))
               .map((note) => (
-                <li key={note.id} className="border-b border-border py-2.5 last:border-b-0">
-                  <p className="text-sm whitespace-pre-wrap">{note.body}</p>
-                  <p className="mt-0.5 text-xs text-muted-foreground">
+                <li key={note.id} className="border-b border-line-soft py-2.5 last:border-b-0">
+                  <p className="text-sm whitespace-pre-wrap text-ink">{note.body}</p>
+                  <p className="mt-0.5 text-xs text-ink-quiet">
                     {note.authorName} · {formatDateTime(note.createdAt)}
                   </p>
                 </li>

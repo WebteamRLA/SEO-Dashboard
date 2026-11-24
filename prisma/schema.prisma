@@ -235,3 +235,61 @@ model NotificationPreference {
   @@id([userId, eventId])
   @@map("notification_preference")
 }
+
+/// One SEO strategy from the RLA strategy sheet: a goal, the initiative that
+/// serves it, its KPI target and current value, and its progress. Imported with
+/// `npm run import:strategies`; a re-import updates rows by `sourceKey`.
+model Strategy {
+  id             String    @id
+  /// Stable identity across imports: priority, goal type, initiative and action.
+  sourceKey      String    @unique @map("source_key")
+  sortOrder      Int       @map("sort_order")
+  /// "Primary" or "Secondary".
+  priority       String
+  goalType       String    @map("goal_type")
+  initiative     String
+  action         String?
+  startDate      DateTime? @map("start_date") @db.Date
+  endDate        DateTime? @map("end_date") @db.Date
+  nextReview     DateTime? @map("next_review") @db.Date
+  duration       String?
+  /// Free text as written in the sheet, e.g. "15 leads/month" or "$30K/month".
+  kpiTarget      String?   @map("kpi_target")
+  kpiCurrent     String?   @map("kpi_current")
+  owner          String?
+  /// Work done, 0-100, as estimated by the team. Null when not filled in.
+  workProgress   Int?      @map("work_progress")
+  status         String
+  workCompleted  String?   @map("work_completed")
+  evidenceUrl    String?   @map("evidence_url")
+  nextSteps      String?   @map("next_steps")
+  outcome        String?
+  expectedImpact String?   @map("expected_impact")
+  timeToImpact   String?   @map("time_to_impact")
+  taskUrl        String?   @map("task_url")
+  createdAt      DateTime  @default(now()) @map("created_at")
+  updatedAt      DateTime  @updatedAt @map("updated_at")
+
+  @@map("strategy")
+}
+
+/// A monthly report's written notes and status. While a draft, the figures are
+/// computed live; finalising stores them in `snapshot` so the report no longer changes.
+model MonthlyReport {
+  /// "YYYY-MM".
+  month         String    @id
+  /// "draft" or "ready".
+  status        String    @default("draft")
+  highlights    String?
+  missed        String?
+  nextMonth     String?   @map("next_month")
+  /// The report's figures at the moment it was finalised (MonthlyReportData).
+  snapshot      Json?
+  finalizedAt   DateTime? @map("finalized_at")
+  finalizedById String?   @map("finalized_by_id")
+  updatedById   String?   @map("updated_by_id")
+  createdAt     DateTime  @default(now()) @map("created_at")
+  updatedAt     DateTime  @updatedAt @map("updated_at")
+
+  @@map("monthly_report")
+}

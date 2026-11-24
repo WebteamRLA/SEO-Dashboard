@@ -32,7 +32,7 @@ export function FilterSelect({
 }) {
   return (
     <Select value={value} onValueChange={onChange}>
-      <SelectTrigger aria-label={label} className={cn("w-full bg-card sm:w-44", className)}>
+      <SelectTrigger aria-label={label} className={cn("w-full sm:w-auto sm:min-w-32", className)}>
         <SelectValue />
       </SelectTrigger>
       <SelectContent>

@@ -76,6 +76,12 @@ const shortMonthFormatter = new Intl.DateTimeFormat(LOCALE, {
   timeZone: TIME_ZONE,
 });
 
+const shortDayFormatter = new Intl.DateTimeFormat(LOCALE, {
+  month: "short",
+  day: "numeric",
+  timeZone: TIME_ZONE,
+});
+
 const currencyFormatter = new Intl.NumberFormat(LOCALE, {
   style: "currency",
   currency: CURRENCY,
@@ -106,6 +112,18 @@ export function formatMonth(month: MonthKey): string {
 /** `2026-10` becomes `Oct`. */
 export function formatMonthShort(month: MonthKey): string {
   return shortMonthFormatter.format(new Date(`${month}-01T00:00:00Z`));
+}
+
+/** `2026-11-03` becomes `Nov 3`, for chart axes. */
+export function formatDayShort(date: ISODate): string {
+  return shortDayFormatter.format(new Date(`${date}T00:00:00Z`));
+}
+
+/** Seconds as "23s" or "1m 05s". */
+export function formatDuration(seconds: number): string {
+  const whole = Math.max(0, Math.round(seconds));
+  if (whole < 60) return `${whole}s`;
+  return `${Math.floor(whole / 60)}m ${String(whole % 60).padStart(2, "0")}s`;
 }
 
 export function formatCurrency(value: number | null): string {

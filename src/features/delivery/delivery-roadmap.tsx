@@ -2,6 +2,7 @@
 
 import { useId, useState } from "react";
 import { CircleCheck, ChevronRight, Circle } from "lucide-react";
+import { Panel } from "@/components/data/panel";
 import { PhaseBadge } from "@/components/data/phase-badge";
 import { ProgressBar } from "@/components/data/progress-bar";
 import { StatusBadge } from "@/components/data/status-badge";
@@ -61,32 +62,40 @@ function PhaseTable({ section }: { section: PhaseSection }) {
     {
       id: "progress",
       header: "Progress",
-      cell: (module) => (
-        <ProgressBar
-          progress={moduleProgress(module)}
-          label={`${module.name} progress`}
-          showLabel
-          className="min-w-28"
-        />
-      ),
+      cell: (module) => {
+        const progress = moduleProgress(module);
+        return (
+          <ProgressBar
+            progress={progress}
+            label={`${module.name} progress`}
+            showLabel
+            tone={progress.percent === 100 ? "good" : "info"}
+            className="min-w-28"
+          />
+        );
+      },
     },
   ];
 
   return (
-    <section aria-labelledby={headingId} className="flex flex-col gap-3">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <h2 id={headingId} className="text-base font-semibold">
-          {section.title}
-        </h2>
-        <div className="w-full sm:w-72">
+    <Panel
+      id={headingId}
+      title={section.title}
+      description={`${section.progress.completed} of ${section.progress.total} steps finished`}
+      actions={
+        <div className="w-32 sm:w-64">
           <ProgressBar
             progress={section.progress}
             label={`${section.title} overall progress`}
-            showLabel
+            tone={section.progress.percent === 100 ? "good" : "info"}
           />
+          <p className="mt-1 text-right text-xs text-ink-quiet">{section.progress.percent}%</p>
         </div>
-      </div>
+      }
+      flush
+    >
       <DataTable
+        bare
         caption={`${section.title} modules and their progress`}
         columns={columns}
         rows={section.modules}
@@ -95,7 +104,7 @@ function PhaseTable({ section }: { section: PhaseSection }) {
         emptyTitle="No modules in this phase"
         emptyDescription="Modules appear here once they are added to the roadmap."
       />
-    </section>
+    </Panel>
   );
 }
 
@@ -111,10 +120,10 @@ function ModuleName({ module }: { module: DeliveryModule }) {
         aria-expanded={open}
         aria-controls={listId}
         onClick={() => setOpen((value) => !value)}
-        className="inline-flex items-center gap-1.5 rounded-sm text-left font-medium outline-none hover:text-primary focus-visible:ring-2 focus-visible:ring-ring"
+        className="inline-flex items-center gap-1.5 rounded-sm text-left font-semibold text-ink outline-none hover:text-primary focus-visible:ring-2 focus-visible:ring-ring"
       >
         <ChevronRight
-          className={cn("size-3.5 shrink-0 text-muted-foreground transition-transform", open && "rotate-90")}
+          className={cn("size-3.5 shrink-0 text-ink-quiet transition-transform", open && "rotate-90")}
           aria-hidden
         />
         {module.name}
@@ -122,16 +131,16 @@ function ModuleName({ module }: { module: DeliveryModule }) {
       <ul
         id={listId}
         hidden={!open}
-        className={cn("flex-col gap-1.5 border-l border-border pl-3", open ? "flex" : "hidden")}
+        className={cn("flex-col gap-1.5 border-l border-line pl-3", open ? "flex" : "hidden")}
       >
         {module.steps.map((step, index) => (
-          <li key={`${index}-${step.label}`} className="flex items-center gap-2 text-sm">
+          <li key={`${index}-${step.label}`} className="flex items-center gap-2 text-[13px]">
             {step.done ? (
               <CircleCheck className="size-3.5 shrink-0 text-status-good" aria-hidden />
             ) : (
               <Circle className="size-3.5 shrink-0 text-muted-foreground" aria-hidden />
             )}
-            <span className={cn(step.done ? "text-foreground" : "text-muted-foreground")}>
+            <span className={cn(step.done ? "text-ink-body" : "text-ink-quiet")}>
               <span className="sr-only">{step.done ? "Done: " : "Pending: "}</span>
               {step.label}
             </span>

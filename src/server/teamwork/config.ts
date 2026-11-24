@@ -5,8 +5,6 @@ export interface TeamworkConfig {
   apiKey: string;
   /** The RLA SEO project in Teamwork. */
   projectId: string;
-  /** Tasks carrying this tag are the SEO work shown in the Work Tracker. */
-  seoTagName: string;
 }
 
 export class TeamworkConfigError extends Error {
@@ -29,6 +27,5 @@ export function getTeamworkConfig(): TeamworkConfig {
     baseUrl,
     apiKey,
     projectId: process.env.TEAMWORK_SEO_PROJECT_ID?.trim() || "719913",
-    seoTagName: process.env.TEAMWORK_SEO_TAG?.trim() || "SEOTeam",
   };
 }
