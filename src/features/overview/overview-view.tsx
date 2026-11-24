@@ -10,11 +10,11 @@ import { ProgressBar } from "@/components/data/progress-bar";
 import { StatusBadge } from "@/components/data/status-badge";
 import { ExternalLink } from "@/components/data/external-link";
 import { useLeads } from "@/features/leads/leads-store";
-import { computeLeadMetrics, computeRevenueSummary, countLeadsBySource, STAGE_META } from "@/lib/domain/leads";
+import { computeLeadMetrics, countLeadsBySource, STAGE_META } from "@/lib/domain/leads";
 import type { GoogleOverview } from "@/lib/data/google";
 import { isWithin, monthsInRange, type DateRange } from "@/lib/date-range";
 import { toMonthKey } from "@/lib/month";
-import { formatCurrency, formatDate, formatMonthShort, formatNumber } from "@/lib/format";
+import { formatDate, formatMonthShort, formatNumber } from "@/lib/format";
 import type { LeadSource, MonthKey, Progress, TaskCounts } from "@/lib/types";
 import { completeMonths } from "@/lib/month";
 import { GooglePanels } from "./google-panels";
@@ -111,7 +111,7 @@ export function OverviewView({
     const inPeriod = leads.filter((lead) => isWithin(lead.submittedAt, range));
     const metrics = computeLeadMetrics(inPeriod);
     const sources = countLeadsBySource(inPeriod);
-    const revenue = computeRevenueSummary(inPeriod);
+    const open = inPeriod.filter((lead) => ["new", "contacted", "meeting", "proposal"].includes(lead.stage)).length;
     const recent = inPeriod
       .filter((lead) => lead.stage !== "spam")
       .sort((a, b) => (b.submittedAt ?? "").localeCompare(a.submittedAt ?? ""))
@@ -122,7 +122,7 @@ export function OverviewView({
         leads.filter((lead) => lead.submittedAt !== null && toMonthKey(lead.submittedAt) === key),
       ).genuine,
     }));
-    return { metrics, sources, revenue, recent, byMonth };
+    return { metrics, sources, open, recent, byMonth };
   }, [leads, range, months]);
 
   const periodMonths = useMemo(() => new Set(monthsInRange(range)), [range]);
@@ -146,13 +146,13 @@ export function OverviewView({
 
   return (
     <div className="flex flex-col gap-8">
-      <PageSection label="Results and revenue">
+      <PageSection label="Results">
         <MetricGrid>
           <MetricCard
             tone="green"
             label="Leads"
             value={formatNumber(stats.metrics.genuine)}
-            detail={`${formatNumber(stats.metrics.spam)} spam excluded`}
+            detail="Added to the Teamwork Pipeline in this period"
           />
           <MetricCard
             tone="green"
@@ -160,16 +160,17 @@ export function OverviewView({
             value={formatNumber(stats.metrics.organic)}
             detail="Organic Search, excl. spam"
           />
+          {/* Teamwork has no deal values, so these count deals; revenue is to come from QuickBooks. */}
           <MetricCard
             tone="amber"
-            label="Won revenue"
-            value={formatCurrency(stats.metrics.wonRevenue)}
-            detail={`${formatNumber(stats.metrics.won)} won ${stats.metrics.won === 1 ? "deal" : "deals"}, from leads in this period`}
+            label="Won"
+            value={formatNumber(stats.metrics.won)}
+            detail="Leads from this period now in WON"
           />
           <MetricCard
-            label="Average deal"
-            value={formatCurrency(stats.revenue.averageDeal)}
-            detail="Per won deal, from leads in this period"
+            label="In progress"
+            value={formatNumber(stats.open)}
+            detail="Leads from this period still open"
           />
         </MetricGrid>
 

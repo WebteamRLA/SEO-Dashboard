@@ -1,20 +1,24 @@
 import type { ReactNode } from "react";
 import { LeadsProvider } from "@/features/leads/leads-store";
-import { getLeads } from "@/lib/data/leads";
-import { getLeadPeople } from "@/lib/data/team";
-import { requireSessionUser } from "@/server/auth/session";
+import { getPipeline, type PipelineData } from "@/lib/data/leads";
 
 /**
- * The pages that read leads (Overview, Leads, Revenue) share one leads store,
- * so a pipeline move shows everywhere at once. Only these pages load every
- * lead; the rest of the dashboard skips that query and its payload. The route
- * group adds nothing to the URLs.
+ * The pages that read leads (Overview, Leads, Revenue) share one read-only
+ * leads store, loaded from the Teamwork Pipeline board. Only these pages load
+ * it; the route group adds nothing to the URLs.
  */
 export default async function LeadPagesLayout({ children }: { children: ReactNode }) {
-  const [sessionUser, leads, team] = await Promise.all([requireSessionUser(), getLeads(), getLeadPeople()]);
+  let pipeline: PipelineData = { leads: [], columns: [], syncedAt: null };
+  let error: string | null = null;
+  try {
+    pipeline = await getPipeline();
+  } catch (cause) {
+    // A Teamwork outage or missing settings must not take these pages down.
+    error = cause instanceof Error ? cause.message : "Could not load leads from Teamwork.";
+  }
 
   return (
-    <LeadsProvider initialLeads={leads} team={team} currentUser={{ id: sessionUser.id, name: sessionUser.name || sessionUser.email }}>
+    <LeadsProvider initialLeads={pipeline.leads} columns={pipeline.columns} syncedAt={pipeline.syncedAt} error={error}>
       {children}
     </LeadsProvider>
   );

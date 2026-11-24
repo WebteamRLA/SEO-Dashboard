@@ -23,11 +23,6 @@ BETTER_AUTH_URL=""
 # Comma-separated emails that are always admins, so the first person can sign in.
 AUTH_BOOTSTRAP_ADMINS=""
 
-# Fluent Forms webhook (website leads). Fluent Forms sends it in the X-Webhook-Secret
-# header; requests without it are rejected. Generate with: openssl rand -hex 32
-FLUENT_FORMS_WEBHOOK_SECRET=
-# Optional. The website's host, so its own pages are not counted as a referrer.
-# LEADS_SITE_HOST=rightleftagency.com
 
 # Resend (team invite emails). API key from resend.com > API Keys, with sending access.
 RESEND_API_KEY=""

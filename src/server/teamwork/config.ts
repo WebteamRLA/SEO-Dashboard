@@ -5,6 +5,8 @@ export interface TeamworkConfig {
   apiKey: string;
   /** The RLA SEO project in Teamwork. */
   projectId: string;
+  /** Courtney's "Pipeline - Business Development" project: the source of leads. */
+  pipelineProjectId: string;
 }
 
 export class TeamworkConfigError extends Error {
@@ -27,5 +29,6 @@ export function getTeamworkConfig(): TeamworkConfig {
     baseUrl,
     apiKey,
     projectId: process.env.TEAMWORK_SEO_PROJECT_ID?.trim() || "719913",
+    pipelineProjectId: process.env.TEAMWORK_PIPELINE_PROJECT_ID?.trim() || "761381",
   };
 }

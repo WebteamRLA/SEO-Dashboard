@@ -89,6 +89,8 @@ export interface NotificationPreference {
   description: string;
   email: boolean;
   inApp: boolean;
+  /** False when this event has no email to send; the email switch is then off and disabled. */
+  emailAvailable?: boolean;
   /** Future automation renders disabled until it is actually delivered. */
   available: boolean;
   phase: Phase;

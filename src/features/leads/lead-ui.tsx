@@ -10,6 +10,7 @@ import {
   Search,
   Share2,
   Sparkles,
+  Presentation,
   type LucideIcon,
 } from "lucide-react";
 import { SegmentedControl } from "@/components/data/segmented-control";
@@ -26,6 +27,7 @@ const SOURCE_ICON: Partial<Record<LeadSource, LucideIcon>> = {
   Social: Share2,
   Direct: Globe,
   Email: Mail,
+  Event: Presentation,
 };
 
 /**
@@ -78,8 +80,8 @@ export function formatMoneyShort(value: number): string {
   return compactMoney.format(value);
 }
 
-export function plural(count: number, word: string): string {
-  return `${count} ${word}${count === 1 ? "" : "s"}`;
+export function plural(count: number, word: string, pluralWord = `${word}s`): string {
+  return `${count} ${count === 1 ? word : pluralWord}`;
 }
 
 /** List | Pipeline. Each view has its own route, so the options are links. */

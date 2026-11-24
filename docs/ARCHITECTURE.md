@@ -6,7 +6,7 @@ built, using sample data only. There is no database, authentication, or external
 ## Stack
 
 Next.js 16 (App Router), React 19, strict TypeScript, Tailwind CSS 4, shadcn/ui on Radix, Lucide
-icons, Recharts, dnd-kit, and Vitest. Deployment target: Cloudflare, through the OpenNext adapter.
+icons, Recharts, and Vitest. Deployment target: Cloudflare, through the OpenNext adapter.
 
 ## Structure
 
@@ -79,22 +79,28 @@ data, such as roadmap items and the sample traffic figures, by the months the pe
 
 ## Lead state
 
-`features/leads/leads-store.tsx` holds leads for the whole dashboard, so a pipeline move also shows
-in the inbox, lead details, Overview, Revenue, and Reports. Any page showing lead data reads
-`useLeads()` rather than server props.
+Leads come from Courtney's Teamwork project "Pipeline - Business Development" (id 761381, override
+with `TEAMWORK_PIPELINE_PROJECT_ID`), read-only, as the CEO meeting decided: Teamwork is the CRM.
+`fetchPipeline` in `server/teamwork/client.ts` reads every card plus the board's workflow stages,
+behind the same stale-while-revalidate cache as the SEO tasks (fresh 1 min, served stale up to 30
+min). The pure, tested `server/teamwork/pipeline-map.ts` turns each open card into a `Lead`:
 
-Edits are saved. Each change shows at once, using the same rules the server applies
-(`lib/domain/leads`), then a Server Action in `server/leads/actions.ts` checks the session,
-validates the input (`server/leads/edits.ts`, zod), re-applies the rule to the stored lead, and
-writes the changed columns plus a history entry (`lead_event`, and `lead_note` for notes) in one
-transaction. The saved lead replaces the shown one; if saving fails, the screen rolls back and a
-toast says why. Notes and history keep the person's name as it was, so they still read correctly
-after someone's access is removed. Any signed-in user may edit leads.
+- **Column:** the card's workflow stage, kept as `lead.teamwork.column` (name, order, colour), and
+  grouped into `lead.stage` (new, contacted, meeting, proposal, won, lost) by column name for the
+  counts. Cards in no stage are Teamwork's Backlog. Completed cards are left out, as on the board.
+- **Source:** the card's tags (Organic (Search), Organic (AI), Referral, Cold Email, Conference...).
+- **Contact:** parsed from the description template "Source / Contact Name / Contact Email /
+  Website / Notes".
+- **No money:** Teamwork has no deal values, so `dealValue` is empty; revenue is to come from
+  QuickBooks.
 
-Edited leads are protected from the two importers: `lead.edited_at` is set on every dashboard edit.
-The sheet import (`npm run import:leads`) then keeps the lead's name, email, company, and stage,
-and a resent Fluent Forms entry keeps its contact details. A deal value typed in the dashboard
-(`lead.deal_value`) takes precedence over the sheet's revenue cells.
+`lib/data/leads.ts` serves these to everything that shows leads (lead pages, Overview, Revenue,
+monthly reports, the bell). `features/leads/leads-store.tsx` holds them for the lead pages, loaded
+once by `app/(dashboard)/(lead-pages)/layout.tsx`. Nothing is written back to Teamwork. The Sync
+button (`server/leads/sync.ts`) skips the cache for a fresh copy, then refreshes the page.
+
+The website-form webhook (Fluent Forms) and its new-lead email were removed on 2026-11-24. The
+`lead` table and the sheet import (`npm run import:leads`) remain but no screen reads them.
 
 ## Notifications
 
@@ -114,11 +120,9 @@ is untrusted input: a malformed value, or one in the future, counts as never
 seen.
 
 Settings > Notifications saves each person's choices (`notification_preference`); events that are
-not delivered yet stay disabled. "New lead received" is delivered on both channels: in-app adds new
-leads to the bell (off removes them), and email goes out through Resend after the Fluent Forms
-webhook stores a first delivery (`server/notifications/send-new-lead.ts`, run with `after()` so the
-webhook answers first). Both are on by default. A resent entry emails no one, and the email escapes
-everything that came from the form.
+not delivered yet stay disabled. "New lead received" adds cards added to the Teamwork Pipeline in the
+last 14 days to the bell (off removes them). It has no email: that was sent by the removed website
+webhook, so its email switch is off and disabled.
 
 ## Authentication
 
@@ -190,7 +194,6 @@ codes. `/settings` is one such redirect.
 | Replace | With | Unchanged |
 | --- | --- | --- |
 | Function bodies in `lib/data/*` | Database and API calls | Pages and components |
-| State updates in `leads-store.tsx` | Server Actions | `useLeads()` consumers, `lib/domain` rules |
 | `getCurrentUser()` | The authenticated session | The shell |
 | `getReferenceDate()` | The real clock | Date presets |
 | Toasts on placeholder actions | Real actions | The surrounding UI |

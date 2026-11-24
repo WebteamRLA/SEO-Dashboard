@@ -64,13 +64,18 @@ export function createSwrCache<T>({ freshMs, staleMs, failureMs, maxEntries = 10
     return entry.pending;
   }
 
-  return function get(key: string, loader: () => Promise<T>): Promise<T> {
+  function entryFor(key: string): Entry<T> {
     let entry = entries.get(key);
     if (!entry) {
       entry = {};
       entries.set(key, entry);
       if (entries.size > maxEntries) entries.delete(entries.keys().next().value as string);
     }
+    return entry;
+  }
+
+  function get(key: string, loader: () => Promise<T>): Promise<T> {
+    const entry = entryFor(key);
     const time = now();
     const recentlyFailed = entry.failedAt !== undefined && time - entry.failedAt < failureMs;
 
@@ -85,5 +90,18 @@ export function createSwrCache<T>({ freshMs, staleMs, failureMs, maxEntries = 10
     if (entry.pending) return entry.pending;
     if (recentlyFailed) return Promise.reject(entry.error);
     return load(entry, loader);
-  };
+  }
+
+  return Object.assign(get, {
+    /** Loads now, whatever the cached data's age (a "Sync now" button). Shares a load already in flight. */
+    refresh(key: string, loader: () => Promise<T>): Promise<T> {
+      const entry = entryFor(key);
+      entry.failedAt = undefined;
+      return load(entry, loader);
+    },
+    /** When the cached value for `key` was loaded, or null if there is none. */
+    loadedAt(key: string): number | null {
+      return entries.get(key)?.loadedAt ?? null;
+    },
+  });
 }

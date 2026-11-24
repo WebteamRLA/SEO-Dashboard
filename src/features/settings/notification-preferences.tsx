@@ -22,6 +22,7 @@ export function NotificationPreferences({
       current.map((preference) => {
         // Unavailable preferences cannot change. Their switches are disabled too.
         if (preference.id !== id || !preference.available) return preference;
+        if (channel === "email" && preference.emailAvailable === false) return preference;
         return channel === "email"
           ? { ...preference, email: checked }
           : { ...preference, inApp: checked };
@@ -68,8 +69,8 @@ export function NotificationPreferences({
       align: "right",
       cell: (preference) => (
         <Switch
-          checked={preference.email}
-          disabled={!preference.available}
+          checked={preference.email && preference.emailAvailable !== false}
+          disabled={!preference.available || preference.emailAvailable === false}
           onCheckedChange={(checked) => setChannel(preference.id, "email", checked)}
           aria-label={`${preference.label}, email`}
         />

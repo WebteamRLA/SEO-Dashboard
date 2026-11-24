@@ -10,9 +10,8 @@ import { SearchInput } from "@/components/data/search-input";
 import { StatusBadge } from "@/components/data/status-badge";
 import { PageBody, PageHeader } from "@/components/layout/page-header";
 import { STAGE_META } from "@/lib/domain/leads";
-import { formatCurrency, formatDate } from "@/lib/format";
-import { cn } from "@/lib/utils";
-import { LEAD_SOURCES, PIPELINE_STAGES, type Lead } from "@/lib/types";
+import { formatDate } from "@/lib/format";
+import { LEAD_SOURCES, PIPELINE_STAGES, type Lead, type PipelineColumn } from "@/lib/types";
 import { DATE_PRESETS, filterLeads } from "./lead-logic";
 import { LeadSummary } from "./lead-summary";
 import {
@@ -24,10 +23,11 @@ import {
   ToolbarTextButton,
 } from "./lead-ui";
 import { useLeads } from "./leads-store";
+import { PipelineUnavailable } from "./pipeline-unavailable";
 import { SpamTag } from "./spam-tag";
+import { SyncButton } from "./sync-button";
 
 const SOURCE_OPTIONS = LEAD_SOURCES.map((source) => ({ value: source, label: source }));
-const STAGE_OPTIONS = PIPELINE_STAGES.map((stage) => ({ value: stage, label: STAGE_META[stage].label }));
 const DATE_OPTIONS = DATE_PRESETS.map((preset) => ({ value: preset.value, label: preset.label }));
 
 const COLUMNS: Column<Lead>[] = [
@@ -68,7 +68,7 @@ const COLUMNS: Column<Lead>[] = [
       <div className="flex items-center gap-2">
         <SourceIcon source={lead.attribution.source} />
         <div className="flex min-w-0 flex-col leading-[1.35]">
-          <span>{lead.attribution.source}</span>
+          <span>{lead.teamwork?.tags.length ? lead.teamwork.tags.join(", ") : lead.attribution.source}</span>
           {lead.attribution.heardFrom ? (
             <span className="max-w-[200px] truncate text-xs text-ink-quiet" title={lead.attribution.heardFrom}>
               Heard from {lead.attribution.heardFrom}
@@ -80,7 +80,7 @@ const COLUMNS: Column<Lead>[] = [
   },
   {
     id: "submitted",
-    header: "Submitted",
+    header: "Added",
     hideBelow: "sm",
     sortValue: (lead) => lead.submittedAt,
     cell: (lead) => <span className="tabular-nums">{lead.submittedAt ? formatDate(lead.submittedAt) : "No date"}</span>,
@@ -88,23 +88,22 @@ const COLUMNS: Column<Lead>[] = [
   {
     id: "stage",
     header: "Stage",
-    sortValue: (lead) => PIPELINE_STAGES.indexOf(lead.stage),
-    cell: (lead) => <StatusBadge tone={STAGE_META[lead.stage].tone} label={STAGE_META[lead.stage].label} />,
+    sortValue: (lead) => lead.teamwork?.column.order ?? PIPELINE_STAGES.indexOf(lead.stage),
+    cell: (lead) =>
+      lead.teamwork ? (
+        <ColumnPill column={lead.teamwork.column} />
+      ) : (
+        <StatusBadge tone={STAGE_META[lead.stage].tone} label={STAGE_META[lead.stage].label} />
+      ),
   },
   {
-    id: "deal-value",
-    header: "Deal value",
-    align: "right",
-    hideBelow: "sm",
-    sortValue: (lead) => lead.dealValue,
-    cell: (lead) =>
-      lead.dealValue === null ? (
-        <span className="text-[#9CA3AF]">—</span>
-      ) : (
-        <span className={cn("tabular-nums", lead.stage === "won" ? "text-tone-good-fg" : "text-ink")}>
-          {formatCurrency(lead.dealValue)}
-        </span>
-      ),
+    id: "assignee",
+    header: "Assigned to",
+    hideBelow: "xl",
+    sortValue: (lead) => lead.teamwork?.assignees[0] ?? null,
+    cell: (lead) => (
+      <span className="block max-w-[180px] truncate text-ink-body">{lead.teamwork?.assignees.join(", ") || "—"}</span>
+    ),
   },
   {
     // The design's row arrow. Rows open on click; the name cell holds the real link.
@@ -118,7 +117,7 @@ const COLUMNS: Column<Lead>[] = [
 ];
 
 export function LeadInbox({ referenceDate }: { referenceDate: string }) {
-  const { leads } = useLeads();
+  const { leads, columns, error } = useLeads();
   const withPeriod = usePeriodHref();
   const [search, setSearch] = useState("");
   const [source, setSource] = useState(ALL);
@@ -126,8 +125,16 @@ export function LeadInbox({ referenceDate }: { referenceDate: string }) {
   const [stage, setStage] = useState(ALL);
   const [showSpam, setShowSpam] = useState(false);
 
+  // The stage filter is the Teamwork board column.
+  const stageOptions = useMemo(
+    () => columns.map((column) => ({ value: String(column.id), label: column.name })),
+    [columns],
+  );
   const matching = useMemo(
-    () => filterLeads(leads, { search, source, period, stage }, referenceDate),
+    () =>
+      filterLeads(leads, { search, source, period, stage: ALL }, referenceDate).filter(
+        (lead) => stage === ALL || String(lead.teamwork?.column.id ?? "") === stage,
+      ),
     [leads, search, source, period, stage, referenceDate],
   );
 
@@ -154,12 +161,17 @@ export function LeadInbox({ referenceDate }: { referenceDate: string }) {
       <Panel
         id="all-leads"
         title="All leads"
-        description="Every lead, newest first. Open one to see where it came from and manage it."
-        actions={<LeadViewSwitch view="list" />}
+        description="Every card on the Teamwork Pipeline board, newest first. Leads change in Teamwork; Sync pulls the latest."
+        actions={
+          <>
+            <SyncButton />
+            <LeadViewSwitch view="list" />
+          </>
+        }
         flush
         toolbar={
           <div className="flex flex-col flex-wrap gap-2 sm:flex-row sm:items-center">
-            <SearchInput value={search} onChange={setSearch} placeholder="Search name, email or company" />
+            <SearchInput value={search} onChange={setSearch} placeholder="Search lead, contact or email" />
             <FilterSelect
               label="Filter by source"
               allLabel="All sources"
@@ -180,7 +192,7 @@ export function LeadInbox({ referenceDate }: { referenceDate: string }) {
               label="Filter by pipeline stage"
               allLabel="All stages"
               value={stage}
-              options={STAGE_OPTIONS}
+              options={stageOptions}
               onChange={setStage}
               className={stage !== ALL ? ACTIVE_FILTER_CLASS : undefined}
             />
@@ -196,6 +208,7 @@ export function LeadInbox({ referenceDate }: { referenceDate: string }) {
           </div>
         }
       >
+        {error ? <PipelineUnavailable message={error} /> : null}
         <DataTable
           caption="Leads"
           columns={COLUMNS}
@@ -210,5 +223,15 @@ export function LeadInbox({ referenceDate }: { referenceDate: string }) {
         />
       </Panel>
     </PageBody>
+  );
+}
+
+/** A Teamwork board column as a pill, in the column's own colour. */
+function ColumnPill({ column }: { column: PipelineColumn }) {
+  return (
+    <span className="inline-flex h-6 max-w-[200px] items-center gap-1.5 rounded-full bg-tone-neutral-bg px-2.5 text-xs font-semibold whitespace-nowrap text-ink-body">
+      <span aria-hidden className="size-1.5 shrink-0 rounded-full" style={{ backgroundColor: column.color }} />
+      <span className="truncate">{column.name}</span>
+    </span>
   );
 }

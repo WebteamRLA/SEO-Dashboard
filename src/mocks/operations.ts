@@ -124,7 +124,7 @@ export const deliveryModules: DeliveryModule[] = [
 ];
 
 export const notificationPreferences: NotificationPreference[] = [
-  { id: "new-lead", label: "New lead received", description: "When a website form submission arrives.", email: true, inApp: true, available: true, phase: "P1" },
+  { id: "new-lead", label: "New lead received", description: "When a new card is added to the Teamwork Pipeline board. Shown in the bell; no email is sent.", email: false, emailAvailable: false, inApp: true, available: true, phase: "P1" },
   { id: "lead-gap", label: "Lead missing from pipeline", description: "When a lead is in the inbox but not in the external pipeline.", email: false, inApp: false, available: false, phase: "P2" },
   { id: "form-failure", label: "Form failure", description: "When a monitored form stops working.", email: false, inApp: false, available: false, phase: "P2" },
   { id: "broken-link", label: "New broken link", description: "When monitoring finds a broken link.", email: false, inApp: false, available: false, phase: "P2" },

@@ -2,8 +2,8 @@
 
 import { useMemo } from "react";
 import { MetricCard, MetricGrid } from "@/components/data/metric-card";
-import { Panel } from "@/components/data/panel";
-import { computeLeadMetrics, computeRevenueBySource } from "@/lib/domain/leads";
+import { Legend, LegendItem, Panel } from "@/components/data/panel";
+import { RankedBars } from "@/components/charts/ranked-bars";
 import type { Lead, RevenueBySource } from "@/lib/types";
 import { useLeads } from "./leads-store";
 import { formatMoneyShort, plural } from "./lead-ui";
@@ -12,29 +12,35 @@ const OPEN_STAGES = new Set<Lead["stage"]>(["new", "contacted", "meeting", "prop
 const SEARCH_AND_AI = new Set<Lead["attribution"]["source"]>(["Organic Search", "AI Search"]);
 
 function summarise(leads: readonly Lead[]) {
-  const metrics = computeLeadMetrics(leads);
-  const open = leads.filter((lead) => OPEN_STAGES.has(lead.stage));
-  const valued = open.filter((lead) => (lead.dealValue ?? 0) > 0);
+  const genuine = leads.filter((lead) => lead.stage !== "spam");
+  const bySource = new Map<string, number>();
+  for (const lead of genuine) bySource.set(lead.attribution.source, (bySource.get(lead.attribution.source) ?? 0) + 1);
   return {
-    metrics,
-    fromSearchAndAi: leads.filter((lead) => lead.stage !== "spam" && SEARCH_AND_AI.has(lead.attribution.source)).length,
-    openLeads: open.length,
-    openValue: valued.reduce((sum, lead) => sum + (lead.dealValue ?? 0), 0),
-    openValued: valued.length,
-    lost: leads.filter((lead) => lead.stage === "lost").length,
-    wonBySource: computeRevenueBySource(leads),
+    total: genuine.length,
+    fromSearchAndAi: genuine.filter((lead) => SEARCH_AND_AI.has(lead.attribution.source)).length,
+    open: genuine.filter((lead) => OPEN_STAGES.has(lead.stage)).length,
+    proposals: genuine.filter((lead) => lead.stage === "proposal").length,
+    won: genuine.filter((lead) => lead.stage === "won").length,
+    lost: genuine.filter((lead) => lead.stage === "lost").length,
+    sources: [...bySource.entries()]
+      .sort((a, b) => b[1] - a[1])
+      .map(([source, count]) => ({
+        label: source,
+        value: count,
+        muted: !SEARCH_AND_AI.has(source as Lead["attribution"]["source"]),
+      })),
   };
 }
 
 /**
- * The top of the Leads pages: four KPI tiles and where won revenue came from.
- * It covers every lead in the dashboard (spam excluded), whatever the
- * filters below are set to, so List and Pipeline show the same figures.
+ * The top of the Leads pages: four KPI tiles and where leads came from. It
+ * covers every card on the Teamwork Pipeline board, whatever the filters below
+ * are set to, so List and Pipeline show the same figures. Teamwork has no deal
+ * values, so the tiles count leads rather than money.
  */
 export function LeadSummary() {
   const { leads } = useLeads();
   const summary = useMemo(() => summarise(leads), [leads]);
-  const { metrics } = summary;
 
   return (
     <>
@@ -42,33 +48,39 @@ export function LeadSummary() {
         <MetricCard
           tone="green"
           label="Leads"
-          value={metrics.genuine.toLocaleString("en-US")}
-          detail={`All time · ${summary.fromSearchAndAi} from search and AI tools`}
+          value={summary.total.toLocaleString("en-US")}
+          detail={`On the Teamwork board · ${summary.fromSearchAndAi} from search and AI`}
         />
         <MetricCard
           tone="blue"
-          label="Open pipeline"
-          value={formatMoneyShort(summary.openValue)}
-          detail={
-            summary.openValued > 0
-              ? `${plural(summary.openValued, "deal")} in progress`
-              : `${plural(summary.openLeads, "open lead")}, no deal values yet`
-          }
+          label="In progress"
+          value={summary.open.toLocaleString("en-US")}
+          detail={`${plural(summary.proposals, "quote or proposal", "quotes or proposals")} out`}
         />
         <MetricCard
           tone="amber"
-          label="Won revenue"
-          value={formatMoneyShort(metrics.wonRevenue)}
-          detail={metrics.won > 0 ? `${plural(metrics.won, "deal")} won` : "No deals won yet"}
+          label="Won"
+          value={summary.won.toLocaleString("en-US")}
+          detail="In the WON column"
         />
         <MetricCard label="Lost" value={summary.lost.toLocaleString("en-US")} detail="Did not go ahead" />
       </MetricGrid>
       <Panel
-        id="won-by-source"
-        title="Where won revenue came from"
-        description="Won deal value by the channel that brought the lead, all time"
+        id="leads-by-source"
+        title="Where leads came from"
+        description="Every lead by the source tag on its Teamwork card"
+        actions={
+          <Legend>
+            <LegendItem color="var(--bar)" label="Search and AI" />
+            <LegendItem color="var(--bar-muted)" label="Other" />
+          </Legend>
+        }
       >
-        <WonRevenueBars rows={summary.wonBySource} emptyText="No deals have been won from leads yet." />
+        {summary.sources.length === 0 ? (
+          <p className="py-2 text-[13px] text-ink-quiet">No leads yet.</p>
+        ) : (
+          <RankedBars label="Leads by source" rows={summary.sources} labelWidth={130} />
+        )}
       </Panel>
     </>
   );

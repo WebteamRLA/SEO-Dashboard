@@ -20,6 +20,7 @@ export const LEAD_SOURCES = [
   "Social",
   "Direct",
   "Email",
+  "Event",
   "Unknown",
 ] as const;
 export type LeadSource = (typeof LEAD_SOURCES)[number];
@@ -55,7 +56,7 @@ export interface LeadActivity {
 }
 
 /** Where a lead record came from. */
-export type LeadOrigin = "sheet" | "website-form" | "manual";
+export type LeadOrigin = "sheet" | "website-form" | "manual" | "teamwork";
 
 export interface LeadAttribution {
   source: LeadSource;
@@ -102,6 +103,33 @@ export interface Lead {
   spamFilteredBy: SpamFilteredBy | null;
   notes: LeadNote[];
   activity: LeadActivity[];
+  /** The Teamwork Pipeline card this lead comes from. Present on every Teamwork lead. */
+  teamwork?: TeamworkLeadInfo;
+}
+
+/** A column on the Teamwork Pipeline board, in board order. */
+export interface PipelineColumn {
+  /** The workflow stage id; 0 is Teamwork's Backlog. */
+  id: number;
+  name: string;
+  order: number;
+  /** Teamwork's colour for the column, e.g. "#e12d42". */
+  color: string;
+}
+
+/** What the Teamwork card says beyond the common lead fields. */
+export interface TeamworkLeadInfo {
+  taskId: number;
+  url: string;
+  column: PipelineColumn;
+  /** Tag names on the card, as written in Teamwork. */
+  tags: string[];
+  assignees: string[];
+  contactName: string | null;
+  website: string | null;
+  startDate: ISODate | null;
+  dueDate: ISODate | null;
+  updatedAt: ISODateTime | null;
 }
 
 /** Fields a user may edit directly on a lead. */

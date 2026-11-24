@@ -71,4 +71,15 @@ describe("createSwrCache", () => {
     advance(60);
     await expect(get("k", () => Promise.resolve(7))).resolves.toBe(7);
   });
+
+  it("refreshes on demand and reports when the value was loaded", async () => {
+    const { get, advance } = setup();
+    await get("k", () => Promise.resolve(1));
+    expect(get.loadedAt("k")).toBe(0);
+    advance(10);
+    expect(await get.refresh("k", () => Promise.resolve(2))).toBe(2);
+    expect(get.loadedAt("k")).toBe(10);
+    expect(await get("k", () => Promise.resolve(3))).toBe(2);
+    expect(get.loadedAt("missing")).toBeNull();
+  });
 });
