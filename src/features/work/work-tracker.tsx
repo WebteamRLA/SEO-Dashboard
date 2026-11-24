@@ -4,6 +4,7 @@ import { useMemo, useState } from "react";
 import { ArrowDown, ArrowUp, ChevronsUpDown } from "lucide-react";
 import { RankedBars } from "@/components/charts/ranked-bars";
 import { ExternalLink } from "@/components/data/external-link";
+import { cn } from "@/lib/utils";
 import { EmptyState } from "@/components/data/empty-state";
 import { ALL, FilterSelect } from "@/components/data/filter-select";
 import { MetricCard, MetricGrid } from "@/components/data/metric-card";
@@ -71,12 +72,35 @@ const COMPLETED_LIMIT = 10;
 const TH = "h-10 px-5 text-left text-xs font-medium text-ink-quiet whitespace-nowrap";
 const TD = "px-5 py-2.5 align-middle text-[13px] text-ink-body";
 
-function GroupHeader({ name, count, span }: { name: string; count: number; span: number }) {
+/** Blue for work still open, green for work done: the same tones as the status pills below. */
+const GROUP_TONE = {
+  open: { row: "bg-tone-info-bg/60", bar: "bg-status-info", label: "text-tone-info-fg", count: "bg-tone-info-bg text-tone-info-fg ring-1 ring-[#b3dbff]" },
+  completed: { row: "bg-tone-good-bg/60", bar: "bg-status-good", label: "text-tone-good-fg", count: "bg-tone-good-bg text-tone-good-fg ring-1 ring-[#86efac]" },
+} as const;
+
+function GroupHeader({
+  name,
+  count,
+  span,
+  tone,
+}: {
+  name: string;
+  count: number;
+  span: number;
+  tone: keyof typeof GROUP_TONE;
+}) {
+  const style = GROUP_TONE[tone];
   return (
-    <tr className="border-t border-line bg-surface-subtle">
-      <th colSpan={span} scope="rowgroup" className="h-9 px-5 text-left">
-        <span className="text-xs font-semibold tracking-[0.04em] text-ink-body uppercase">{name}</span>
-        <span className="ml-2 text-xs font-normal text-ink-quiet tabular-nums">{count}</span>
+    <tr className={cn("border-t border-line", style.row)}>
+      <th colSpan={span} scope="rowgroup" className="relative h-10 px-5 text-left">
+        <span aria-hidden className={cn("absolute inset-y-0 left-0 w-[3px]", style.bar)} />
+        <span className="flex items-center gap-2">
+          <span className={cn("text-xs font-bold tracking-[0.06em] uppercase", style.label)}>{name}</span>
+          <span className={cn("inline-flex h-5 min-w-5 items-center justify-center rounded-full px-1.5 text-[11px] font-semibold tabular-nums", style.count)}>
+            {count}
+            <span className="sr-only"> {count === 1 ? "task" : "tasks"}</span>
+          </span>
+        </span>
       </th>
     </tr>
   );
@@ -251,7 +275,7 @@ export function WorkTracker({
               </thead>
               {open.length > 0 ? (
                 <tbody>
-                  <GroupHeader name="Open" count={open.length} span={7} />
+                  <GroupHeader name="Open" count={open.length} span={7} tone="open" />
                   {openShown.map((row) => (
                     <TaskLine key={row.id} row={row} />
                   ))}
@@ -260,7 +284,7 @@ export function WorkTracker({
               ) : null}
               {done.length > 0 ? (
                 <tbody>
-                  <GroupHeader name="Completed" count={done.length} span={7} />
+                  <GroupHeader name="Completed" count={done.length} span={7} tone="completed" />
                   {doneShown.map((row) => (
                     <TaskLine key={row.id} row={row} />
                   ))}
