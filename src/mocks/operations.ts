@@ -1,38 +1,8 @@
 import type {
   AiAgent,
-  BrokenLink,
   DeliveryModule,
-  MonitoredForm,
   NotificationPreference,
-  SiteIssue,
 } from "@/lib/types";
-
-export const monitoredForms: MonitoredForm[] = [
-  { id: "form-contact", name: "Contact Form", url: "/contact", status: "healthy", lastChecked: "2026-11-06T06:00:00Z", failedSubmissions: 0, monitoring: true },
-  { id: "form-audit", name: "Free SEO Audit", url: "/free-seo-audit", status: "healthy", lastChecked: "2026-11-06T06:00:00Z", failedSubmissions: 0, monitoring: true },
-  { id: "form-quote", name: "Request a Quote", url: "/get-a-quote", status: "degraded", lastChecked: "2026-11-06T06:00:00Z", failedSubmissions: 2, monitoring: true },
-  { id: "form-seo", name: "Service Inquiry (SEO)", url: "/services/seo", status: "healthy", lastChecked: "2026-11-06T06:00:00Z", failedSubmissions: 0, monitoring: true },
-  { id: "form-web", name: "Service Inquiry (Web Design)", url: "/services/web-design", status: "failing", lastChecked: "2026-11-05T06:00:00Z", failedSubmissions: 5, monitoring: true },
-  { id: "form-news", name: "Newsletter Signup", url: "/blog", status: "paused", lastChecked: "2026-10-28T06:00:00Z", failedSubmissions: 0, monitoring: false },
-];
-
-export const brokenLinks: BrokenLink[] = [
-  { id: "link-1", url: "/blog/2024-seo-trends", foundOn: "/blog", statusCode: 404, firstDetected: "2026-10-29", lastChecked: "2026-11-05", status: "open" },
-  { id: "link-2", url: "/services/ppc-management", foundOn: "/services", statusCode: 404, firstDetected: "2026-10-22", lastChecked: "2026-11-05", status: "in-progress" },
-  { id: "link-3", url: "/case-studies/retail-growth", foundOn: "/blog/local-seo-checklist", statusCode: 410, firstDetected: "2026-10-15", lastChecked: "2026-11-05", status: "open" },
-  { id: "link-4", url: "/downloads/seo-guide.pdf", foundOn: "/free-seo-audit", statusCode: 500, firstDetected: "2026-11-02", lastChecked: "2026-11-05", status: "open" },
-  { id: "link-5", url: "/about/team-old", foundOn: "/about", statusCode: 404, firstDetected: "2026-09-30", lastChecked: "2026-10-20", status: "resolved" },
-  { id: "link-6", url: "/blog/email-open-rates", foundOn: "/blog/how-much-does-seo-cost", statusCode: 301, firstDetected: "2026-10-08", lastChecked: "2026-10-18", status: "resolved" },
-];
-
-export const siteIssues: SiteIssue[] = [
-  { id: "issue-1", name: "Form submission endpoint timing out", url: "/services/web-design", severity: "critical", detected: "2026-11-04", status: "open" },
-  { id: "issue-2", name: "Largest Contentful Paint above 4 seconds", url: "/blog/how-much-does-seo-cost", severity: "high", detected: "2026-10-30", status: "in-progress" },
-  { id: "issue-3", name: "Missing meta description", url: "/services/paid-media", severity: "medium", detected: "2026-10-27", status: "open" },
-  { id: "issue-4", name: "Duplicate title tag", url: "/blog/local-seo-checklist", severity: "medium", detected: "2026-10-21", status: "in-progress" },
-  { id: "issue-5", name: "Images missing alt text", url: "/case-studies", severity: "low", detected: "2026-10-12", status: "open" },
-  { id: "issue-6", name: "Sitemap referencing redirected URLs", url: "/sitemap.xml", severity: "medium", detected: "2026-09-26", status: "resolved" },
-];
 
 export const aiAgents: AiAgent[] = [
   {

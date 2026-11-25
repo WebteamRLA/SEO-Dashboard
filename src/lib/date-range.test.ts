@@ -2,7 +2,6 @@ import { describe, expect, it } from "vitest";
 import {
   formatRange,
   isWithin,
-  monthsInRange,
   periodLabel,
   describePeriod,
   formatMonthSpan,
@@ -96,12 +95,6 @@ describe("range helpers", () => {
     expect(isWithin("2026-11-10T23:59:00Z", range)).toBe(true);
     expect(isWithin("2026-11-11", range)).toBe(false);
     expect(isWithin(null, range)).toBe(false);
-  });
-
-  it("lists the months a range touches", () => {
-    expect(monthsInRange(range)).toEqual(["2026-10", "2026-11"]);
-    expect(monthsInRange({ from: "2025-12-20", to: "2026-01-05" })).toEqual(["2025-12", "2026-01"]);
-    expect(monthsInRange({ from: "2026-11-01", to: "2026-11-10" })).toEqual(["2026-11"]);
   });
 
   it("measures length and finds the equal period before", () => {

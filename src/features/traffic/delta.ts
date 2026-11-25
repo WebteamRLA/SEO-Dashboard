@@ -10,6 +10,7 @@ export interface TileChange {
 }
 
 const VS = "vs. previous period";
+const NONE_BEFORE = "None in the previous period";
 
 /**
  * The design's tile change (a coloured arrow and figure) for a current/prior pair.
@@ -32,7 +33,8 @@ export function tileChange(kind: DeltaKind, current: number | null, prior: numbe
     if (diff === 0) return { delta: { text: "No change", direction: "flat" }, detail: VS };
     return { delta: { text: `${Math.abs(diff).toFixed(1)} pts`, direction: diff > 0 ? "up" : "down" }, detail: VS };
   }
-  if (prior === 0) return {};
+  // A percentage of nothing is meaningless; say what happened instead of showing a blank.
+  if (prior === 0) return current === 0 ? { delta: { text: "No change", direction: "flat" }, detail: VS } : { detail: NONE_BEFORE };
   const pct = Math.round(((current - prior) / prior) * 1000) / 10;
   if (pct === 0) return { delta: { text: "No change", direction: "flat" }, detail: VS };
   return { delta: { text: `${Math.abs(pct).toFixed(1)}%`, direction: pct > 0 ? "up" : "down" }, detail: VS };

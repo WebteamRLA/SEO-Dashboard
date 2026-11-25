@@ -55,9 +55,9 @@ export function SyncButton({ className }: { className?: string }) {
       <span className="hidden text-xs text-ink-quiet sm:inline" aria-live="polite">
         {pending ? "Syncing with Teamwork…" : syncedAt && now !== null ? `Synced ${ago(syncedAt, now)}` : null}
       </span>
-      <Button variant="outline" size="sm" onClick={sync} disabled={pending} aria-label="Sync leads with Teamwork">
+      <Button variant="outline" size="sm" onClick={sync} disabled={pending}>
         <RefreshCw className={cn("size-3.5", pending && "animate-spin")} aria-hidden />
-        Sync
+        Sync from Teamwork
       </Button>
     </div>
   );

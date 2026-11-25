@@ -293,3 +293,24 @@ model MonthlyReport {
 
   @@map("monthly_report")
 }
+
+/// One run of a Site health job: the speed test, the indexing check or the
+/// weekly site check. The page reads the latest finished run of each kind; the
+/// earlier ones give history (speed over time, issues fixed since last week).
+model SiteHealthRun {
+  /// Random UUID, set by the app.
+  id         String    @id
+  /// "speed", "indexing" or "crawl".
+  kind       String
+  /// "running", "ok" or "error".
+  status     String    @default("running")
+  /// Plain-language reason when status is "error".
+  error      String?
+  /// SpeedResult, IndexingResult or CrawlResult (src/server/site-health/types.ts).
+  result     Json?
+  startedAt  DateTime  @default(now()) @map("started_at")
+  finishedAt DateTime? @map("finished_at")
+
+  @@index([kind, startedAt])
+  @@map("site_health_run")
+}

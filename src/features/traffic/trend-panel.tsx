@@ -29,7 +29,8 @@ export function TrendPanel({
   title: string;
   description?: string;
   actions?: ReactNode;
-  table: ChartTableData;
+  /** The chart's figures as a table, behind a toggle. Without it there is no toggle. */
+  table?: ChartTableData;
   children: ReactNode;
 }) {
   const [showTable, setShowTable] = useState(false);
@@ -37,23 +38,25 @@ export function TrendPanel({
     <Panel
       title={title}
       description={description}
-      flush={showTable}
+      flush={Boolean(table) && showTable}
       actions={
         <>
           {actions}
-          <Button
-            variant="ghost"
-            size="icon-sm"
-            onClick={() => setShowTable((value) => !value)}
-            aria-pressed={showTable}
-            aria-label={showTable ? `Show ${title} as a chart` : `Show ${title} as a table`}
-          >
-            {showTable ? <BarChart3 className="size-4" aria-hidden /> : <Table2 className="size-4" aria-hidden />}
-          </Button>
+          {table ? (
+            <Button
+              variant="ghost"
+              size="icon-sm"
+              onClick={() => setShowTable((value) => !value)}
+              aria-pressed={showTable}
+              aria-label={showTable ? `Show ${title} as a chart` : `Show ${title} as a table`}
+            >
+              {showTable ? <BarChart3 className="size-4" aria-hidden /> : <Table2 className="size-4" aria-hidden />}
+            </Button>
+          ) : null}
         </>
       }
     >
-      {showTable ? (
+      {table && showTable ? (
         <div className="max-h-72 overflow-auto">
           <Table>
             <caption className="sr-only">{title}</caption>

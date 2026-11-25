@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { completeMonths, isMonthKey, toMonthKey } from "./month";
+import { isMonthKey, toMonthKey } from "./month";
 
 const available = ["2026-09", "2026-10"];
 
@@ -20,12 +20,5 @@ describe("toMonthKey", () => {
     expect(toMonthKey("2026-10-05T09:00:00Z")).toBe("2026-10");
     // 23:30 on Sep 30 in New York is already October in UTC.
     expect(toMonthKey("2026-10-01T03:30:00.000Z")).toBe("2026-09");
-  });
-});
-
-describe("completeMonths", () => {
-  it("removes only the month in progress", () => {
-    const rows = [{ month: "2026-10" }, { month: "2026-11" }];
-    expect(completeMonths(rows, "2026-11")).toEqual([{ month: "2026-10" }]);
   });
 });

@@ -1,42 +1,5 @@
 import type { ISODate, ISODateTime, Phase } from "./common";
 
-/* Site health -------------------------------------------------------------- */
-
-export type FormMonitorStatus = "healthy" | "degraded" | "failing" | "paused";
-
-export interface MonitoredForm {
-  id: string;
-  name: string;
-  url: string;
-  status: FormMonitorStatus;
-  lastChecked: ISODateTime;
-  failedSubmissions: number;
-  monitoring: boolean;
-}
-
-export type LinkIssueStatus = "open" | "in-progress" | "resolved";
-
-export interface BrokenLink {
-  id: string;
-  url: string;
-  foundOn: string;
-  statusCode: number;
-  firstDetected: ISODate;
-  lastChecked: ISODate;
-  status: LinkIssueStatus;
-}
-
-export type IssueSeverity = "critical" | "high" | "medium" | "low";
-
-export interface SiteIssue {
-  id: string;
-  name: string;
-  url: string;
-  severity: IssueSeverity;
-  detected: ISODate;
-  status: LinkIssueStatus;
-}
-
 /* Reports ------------------------------------------------------------------ */
 
 export type ReportStatus = "draft" | "ready" | "sent";

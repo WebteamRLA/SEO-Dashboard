@@ -2,38 +2,17 @@ import "server-only";
 import type {
   AgentSlug,
   AiAgent,
-  BrokenLink,
   DeliveryModule,
-  MonitoredForm,
   NotificationPreference,
-  SiteIssue,
 } from "@/lib/types";
 import {
   aiAgents,
-  brokenLinks,
   deliveryModules,
-  monitoredForms,
   notificationPreferences,
-  siteIssues,
 } from "@/mocks/operations";
 import { requireSessionUser } from "@/server/auth/session";
 import { createDb, releaseDb } from "@/server/db/client";
 import { mergePreferences } from "@/server/notifications/preferences";
-
-export async function getMonitoredForms(): Promise<MonitoredForm[]> {
-  await requireSessionUser();
-  return monitoredForms;
-}
-
-export async function getBrokenLinks(): Promise<BrokenLink[]> {
-  await requireSessionUser();
-  return brokenLinks;
-}
-
-export async function getSiteIssues(): Promise<SiteIssue[]> {
-  await requireSessionUser();
-  return siteIssues;
-}
 
 export async function getAiAgents(): Promise<AiAgent[]> {
   await requireSessionUser();

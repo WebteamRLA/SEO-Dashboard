@@ -10,11 +10,11 @@ import { PageBody, PageHeader } from "@/components/layout/page-header";
 import { Button } from "@/components/ui/button";
 import { STAGE_META } from "@/lib/domain/leads";
 import { formatDate, formatDateTime } from "@/lib/format";
-import type { PipelineColumn } from "@/lib/types";
+import type { Lead, PipelineColumn } from "@/lib/types";
 import { SourceIcon } from "./lead-ui";
 import { useLeads } from "./leads-store";
 
-function Fields({ items }: { items: readonly { label: string; value: ReactNode }[] }) {
+export function Fields({ items }: { items: readonly { label: string; value: ReactNode }[] }) {
   return (
     <dl className="grid gap-x-5 gap-y-3.5 sm:grid-cols-2">
       {items.map((item) => (
@@ -41,7 +41,7 @@ function BackLink() {
 }
 
 /** A Teamwork board column as a pill, in the column's own colour. */
-function ColumnPill({ column }: { column: PipelineColumn }) {
+export function ColumnPill({ column }: { column: PipelineColumn }) {
   return (
     <span className="inline-flex h-6 items-center gap-1.5 rounded-full bg-tone-neutral-bg px-2.5 text-xs font-semibold whitespace-nowrap text-ink-body">
       <span aria-hidden className="size-1.5 shrink-0 rounded-full" style={{ backgroundColor: column.color }} />
@@ -59,15 +59,35 @@ function ExternalText({ href, children }: { href: string; children: ReactNode })
 }
 
 /** A website as typed on the card, made into a link when it looks like one. */
-function websiteLink(website: string | null): ReactNode {
+export function websiteLink(website: string | null): ReactNode {
   if (!website) return null;
   const href = /^https?:\/\//i.test(website) ? website : /^[\w-]+(\.[\w-]+)+/.test(website) ? `https://${website}` : null;
   return href ? <ExternalText href={href}>{website}</ExternalText> : website;
 }
 
-function emailLink(email: string | null): ReactNode {
+export function emailLink(email: string | null): ReactNode {
   if (!email) return null;
   return /^[^\s@,]+@[^\s@,]+$/.test(email) ? <a href={`mailto:${email}`} className="text-primary hover:underline">{email}</a> : email;
+}
+
+/** A lead's activity, newest first, as a timeline. */
+export function ActivityList({ activity }: { activity: Lead["activity"] }) {
+  return (
+    <ol className="flex flex-col">
+      {[...activity]
+        .sort((a, b) => b.createdAt.localeCompare(a.createdAt))
+        .map((entry, index, all) => (
+          <li key={entry.id} className="relative flex flex-col gap-px pb-3.5 pl-5 last:pb-0">
+            <span aria-hidden className="absolute top-1.5 left-[3px] size-2 rounded-full bg-bar-muted" />
+            {index < all.length - 1 ? <span aria-hidden className="absolute top-4 bottom-0 left-1.5 w-0.5 bg-line" /> : null}
+            <p className="text-sm text-ink">{entry.description}</p>
+            <p className="text-xs text-ink-quiet">
+              {entry.actorName ?? "Teamwork"} · {formatDateTime(entry.createdAt)}
+            </p>
+          </li>
+        ))}
+    </ol>
+  );
 }
 
 /**
@@ -176,22 +196,7 @@ export function LeadDetail({ leadId }: { leadId: string }) {
             {lead.activity.length === 0 ? (
               <p className="text-sm text-ink-quiet">No activity recorded yet.</p>
             ) : (
-              <ol className="flex flex-col">
-                {[...lead.activity]
-                  .sort((a, b) => b.createdAt.localeCompare(a.createdAt))
-                  .map((entry, index, all) => (
-                    <li key={entry.id} className="relative flex flex-col gap-px pb-3.5 pl-5 last:pb-0">
-                      <span aria-hidden className="absolute top-1.5 left-[3px] size-2 rounded-full bg-bar-muted" />
-                      {index < all.length - 1 ? (
-                        <span aria-hidden className="absolute top-4 bottom-0 left-1.5 w-0.5 bg-line" />
-                      ) : null}
-                      <p className="text-sm text-ink">{entry.description}</p>
-                      <p className="text-xs text-ink-quiet">
-                        {entry.actorName ?? "Teamwork"} · {formatDateTime(entry.createdAt)}
-                      </p>
-                    </li>
-                  ))}
-              </ol>
+              <ActivityList activity={lead.activity} />
             )}
           </Panel>
         </div>

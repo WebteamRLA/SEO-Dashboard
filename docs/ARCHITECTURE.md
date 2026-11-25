@@ -40,10 +40,10 @@ src/
 | Work | `/work` | P1 |
 | Roadmap | `/roadmap` | P1 |
 | Leads | `/leads`, `/leads/[id]`, `/leads/pipeline` | P1 |
-| Traffic & SEO | `/traffic-seo`, `/traffic-seo/search-performance`, `/traffic-seo/visitors` | P2 |
-| Traffic & SEO | `/traffic-seo/behavior`, `/traffic-seo/social` | P3 |
+| Traffic & SEO | `/traffic-seo` (Traffic), `/traffic-seo/search-performance` | P2 |
+| Traffic & SEO | `/traffic-seo/visitors`, `/traffic-seo/behavior`, `/traffic-seo/social`: built but not in the menu (the design has one Traffic page) | P3 |
 | Revenue | `/revenue` | P2 |
-| Site Health | `/site-health/forms`, `/site-health/broken-links`, `/site-health/issues` | P2 |
+| Site Health | `/site-health`: speed (PageSpeed Insights), indexing (URL Inspection), weekly site check; see docs/GOOGLE-DATA.md | P2 |
 | Reports | `/reports` | P2 |
 | AI Agents | `/ai-agents`, `/ai-agents/[slug]` | P3, except the Lead Filter Agent (P2) |
 | Settings | `/settings/team`, `/settings/notifications`, `/settings/delivery-roadmap` | P1 |
@@ -158,7 +158,10 @@ Google sign-in through Better Auth, with sessions in Postgres. There are no pass
 Sample data runs to a fixed "today" of 2026-11-06 (`mocks/calendar.ts`), so relative filters do not
 drift. The default month is October 2026, the latest complete month.
 
-Month-by-month lead, revenue, and traffic charts plot complete months only. Plotting six days of November beside
+The Overview's "Leads over time" and "Tasks over time" charts follow the selected period
+(`src/lib/period-buckets.ts`): by day up to 31 days, by week up to 92, by month beyond. The leads chart
+stops at today; the column holding today is drawn lighter as "so far". Other month-by-month revenue and
+traffic charts plot complete months only. Plotting six days of November beside
 full months reads as a collapse in traffic, and a caption does not reliably correct that. Metric
 cards for the month in progress say "Month in progress" instead of a comparison.
 

@@ -65,7 +65,7 @@ export function MetricCard({
 }) {
   return (
     <div className={cn("flex min-w-0 flex-col gap-1.5 rounded-xl border bg-card px-4 py-3.5 sm:px-5 sm:py-4", TONE_BORDER[tone], className)}>
-      <p className="truncate text-[13px] font-medium text-ink-quiet">{label}</p>
+      <p className="line-clamp-2 text-[13px] font-medium text-ink-quiet">{label}</p>
       <p className="truncate text-[22px] leading-[28px] font-semibold tracking-[-0.02em] tabular-nums sm:text-[26px] sm:leading-[30px]">
         {value}
         {suffix ? <span className="text-[15px] font-medium tracking-normal text-ink-quiet">{suffix}</span> : null}

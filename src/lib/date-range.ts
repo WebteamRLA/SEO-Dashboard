@@ -129,22 +129,6 @@ export function isWithin(value: string | null | undefined, range: DateRange): bo
 }
 
 /** Every calendar month the range touches, oldest first. For monthly data. */
-export function monthsInRange(range: DateRange): MonthKey[] {
-  const months: MonthKey[] = [];
-  let [y, m] = range.from.split("-").map(Number) as [number, number];
-  const last = range.to.slice(0, 7);
-  for (;;) {
-    const key = `${y}-${String(m).padStart(2, "0")}`;
-    months.push(key);
-    if (key >= last) return months;
-    m += 1;
-    if (m > 12) {
-      m = 1;
-      y += 1;
-    }
-  }
-}
-
 export function rangeDays(range: DateRange): number {
   return Math.round((Date.parse(range.to) - Date.parse(range.from)) / DAY_MS) + 1;
 }

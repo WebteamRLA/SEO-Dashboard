@@ -8,9 +8,18 @@ import {
   fetchSocialTraffic,
   fetchSearchTotals,
   fetchTrafficBreakdown,
+  fetchTrafficOverview,
   fetchTrafficTotals,
   type SearchBreakdown,
 } from "@/server/google/client";
+import type { TrafficOverview } from "@/server/google/traffic-overview";
+export type {
+  TrafficChannel,
+  TrafficLandingPage,
+  TrafficOverview,
+  TrafficOverviewDay,
+  TrafficOverviewTotals,
+} from "@/server/google/traffic-overview";
 import type { TrafficBreakdown } from "@/server/google/analytics";
 export type {
   BehaviorData,
@@ -37,7 +46,6 @@ export type { SearchBreakdown } from "@/server/google/client";
 export type {
   ChannelRow,
   KeywordRow,
-  LandingPageSummary,
   SearchDay,
   TrafficBreakdown,
   TrafficDay,
@@ -132,6 +140,17 @@ export async function getTrafficAnalytics(
     return { totals, breakdown };
   });
   return { window, traffic };
+}
+
+/** GA4 for the Traffic page: visits, visitors, search and AI, forms, channels, days and landing pages. */
+export async function getTrafficOverview(
+  range: DateRange,
+  today: ISODate,
+): Promise<{ window: ReportWindow | null; overview: SourceResult<TrafficOverview> }> {
+  await requireSessionUser();
+  const window = reportWindow(range, today);
+  if (!window) return { window, overview: EMPTY };
+  return { window, overview: await load(() => fetchTrafficOverview(window)) };
 }
 
 /** GA4 engagement for Behavior Analytics, for the selected period against the one before. */

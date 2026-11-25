@@ -16,11 +16,3 @@ export function isMonthKey(value: unknown): value is MonthKey {
 export function toMonthKey(isoDate: string): MonthKey {
   return isoDate.length <= 7 || isCalendarDate(isoDate) ? isoDate.slice(0, 7) : instantMonthKey(isoDate);
 }
-
-/**
- * Drops the month still in progress. Plotting a few days beside full months
- * reads as a collapse, which no caption reliably corrects.
- */
-export function completeMonths<T extends { month: MonthKey }>(rows: readonly T[], inProgressMonth: MonthKey): T[] {
-  return rows.filter((row) => row.month !== inProgressMonth);
-}

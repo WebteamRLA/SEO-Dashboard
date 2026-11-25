@@ -16,9 +16,14 @@ day or two can still shift slightly.
 The three pages under **Traffic & SEO** use the same connection and the same
 selected period (ending yesterday), each compared with the same number of days before it:
 
-- **SEO Overview**: Search Console clicks, impressions, CTR, average position; GA4
-  organic sessions; organic clicks over time; top landing pages (Search Console pages
-  joined with GA4 Organic Search landing pages on the path, ignoring a trailing slash).
+- **Traffic overview** (`/traffic-seo`): GA4 visits (sessions), visitors (users), visits
+  from search and AI, and form submissions (GA4 key events); visits over time split into
+  search and AI versus other channels; visits by channel; the top 10 landing pages with
+  their share from search and AI and their key events. "Search and AI" is GA4's Organic
+  Search channel plus sessions whose source is an AI assistant (ChatGPT, Perplexity,
+  Gemini, Copilot, Claude and others; `AI_SOURCE_PATTERN` in
+  `src/server/google/traffic-overview.ts`), shown as their own "AI Search" channel. GA4
+  has no AI channel and files most of these under Referral.
 - **Search Performance**: the four Search Console metrics, a chart for each, and the
   top 250 queries by clicks with position change against the previous period.
   Google hides rare queries for privacy, so the query rows add up to less than the totals.
@@ -72,6 +77,30 @@ set up shows "Not connected yet"; one that fails shows the reason. Neither break
 7. **Confirm access:** `npm run check:google`. It lists every site and property the
    service account can see, then runs one query against each configured one, and exits
    non-zero until both work. Restart `npm run dev` afterwards to load the new variables.
+
+## Site health
+
+`/site-health` shows three checks, each stored as a row in `site_health_run` and read
+from there (the page never checks live):
+
+- **Speed** (daily): Google PageSpeed Insights, mobile, for the home page. Needs
+  `PAGESPEED_API_KEY`, a Google Cloud API key with the PageSpeed Insights API enabled.
+  Core Web Vitals come from real Chrome visitors when Google has enough of them for the
+  site; until then the panel shows the lab test and says so.
+- **Indexing** (daily): Search Console URL Inspection for every sitemap page, with the
+  same service account. About 2 minutes for 361 pages, 20 at a time. Each run uses one
+  inspection per page from the property's 2,000 a day. A run that runs short keeps the
+  previous result for pages it did not reach, and the next run starts with those.
+- **Site check** (Mondays): visits every sitemap page on the site's own host, then the
+  internal links that are not sitemap pages, and lists issues (broken pages and links,
+  redirects in the sitemap, missing titles, descriptions and H1s, duplicates, noindex
+  pages in the sitemap, images without alt text). "Technical fixes" counts issues the
+  previous check found that the latest no longer finds, on pages it re-checked.
+
+The schedule is in `vercel.json` (`/api/cron/site-health?task=daily|weekly`); Vercel
+sends `CRON_SECRET`, and without it set the route refuses to run. Admins can also click
+**Run checks now**. Each invocation gets about four minutes of work: speed, then the
+site check, then indexing.
 
 ## Troubleshooting
 

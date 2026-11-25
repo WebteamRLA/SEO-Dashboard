@@ -27,8 +27,7 @@ function lead(overrides: Partial<Lead> & { id: string }): Lead {
   };
 }
 
-const all = { search: "", source: "all", period: "all", stage: "all" };
-const ref = "2026-11-06";
+const all = { search: "", source: "all", range: null, stage: "all" };
 
 describe("filterLeads", () => {
   const leads = [
@@ -39,22 +38,21 @@ describe("filterLeads", () => {
   ];
   const ids = (found: Lead[]) => found.map((item) => item.id);
 
-  it("returns everything for all time", () => {
-    expect(ids(filterLeads(leads, all, ref))).toEqual(["a", "b", "c", "d"]);
+  it("returns everything without a period", () => {
+    expect(ids(filterLeads(leads, all))).toEqual(["a", "b", "c", "d"]);
   });
-  it("includes the reference day and the six days before it for 7 days", () => {
-    expect(ids(filterLeads(leads, { ...all, period: "7" }, ref))).toEqual(["a", "b"]);
-  });
-  it("applies 30 and 90 day windows", () => {
-    expect(ids(filterLeads(leads, { ...all, period: "30" }, ref))).toEqual(["a", "b", "c"]);
-    expect(ids(filterLeads(leads, { ...all, period: "90" }, ref))).toEqual(["a", "b", "c", "d"]);
+  it("keeps leads added in the period, by their day in the reporting time zone", () => {
+    expect(ids(filterLeads(leads, { ...all, range: { from: "2026-11-01", to: "2026-11-30" } }))).toEqual(["a"]);
+    // 00:00 UTC on Oct 31 is still Oct 30 in New York.
+    expect(ids(filterLeads(leads, { ...all, range: { from: "2026-10-01", to: "2026-10-31" } }))).toEqual(["b", "c"]);
+    expect(ids(filterLeads(leads, { ...all, range: { from: "2026-10-31", to: "2026-10-31" } }))).toEqual([]);
   });
   it("searches name, email and company, case-insensitively", () => {
-    expect(ids(filterLeads(leads, { ...all, search: "zed" }, ref))).toEqual(["b"]);
-    expect(ids(filterLeads(leads, { ...all, search: "HARBOR" }, ref))).toEqual(["d"]);
+    expect(ids(filterLeads(leads, { ...all, search: "zed" }))).toEqual(["b"]);
+    expect(ids(filterLeads(leads, { ...all, search: "HARBOR" }))).toEqual(["d"]);
   });
   it("filters by stage", () => {
-    expect(ids(filterLeads(leads, { ...all, stage: "won" }, ref))).toEqual(["c"]);
+    expect(ids(filterLeads(leads, { ...all, stage: "won" }))).toEqual(["c"]);
   });
 });
 

@@ -66,15 +66,17 @@ function sortRows(rows: TaskRow[], sort: SortState | null, fallback: (a: TaskRow
   });
 }
 
-const OPEN_LIMIT = 25;
-const COMPLETED_LIMIT = 10;
+/** Rows shown per group before "Show all". */
+const GROUP_LIMIT = { todo: 25, inProgress: 25, completed: 10 } as const;
+type GroupId = keyof typeof GROUP_LIMIT;
 
 const TH = "h-10 px-5 text-left text-xs font-medium text-ink-quiet whitespace-nowrap";
 const TD = "px-5 py-2.5 align-middle text-[13px] text-ink-body";
 
-/** Blue for work still open, green for work done: the same tones as the status pills below. */
+/** Grey for to do, blue for in progress, green for done: the same tones as the status pills below. */
 const GROUP_TONE = {
-  open: { row: "bg-tone-info-bg/60", bar: "bg-status-info", label: "text-tone-info-fg", count: "bg-tone-info-bg text-tone-info-fg ring-1 ring-[#b3dbff]" },
+  todo: { row: "bg-tone-neutral-bg/60", bar: "bg-status-neutral", label: "text-tone-neutral-fg", count: "bg-tone-neutral-bg text-tone-neutral-fg ring-1 ring-[#d1d5db]" },
+  inProgress: { row: "bg-tone-info-bg/60", bar: "bg-status-info", label: "text-tone-info-fg", count: "bg-tone-info-bg text-tone-info-fg ring-1 ring-[#b3dbff]" },
   completed: { row: "bg-tone-good-bg/60", bar: "bg-status-good", label: "text-tone-good-fg", count: "bg-tone-good-bg text-tone-good-fg ring-1 ring-[#86efac]" },
 } as const;
 
@@ -169,19 +171,18 @@ export function WorkTracker({
   );
 
   const [sort, setSort] = useState<SortState | null>(null);
-  const [showAllOpen, setShowAllOpen] = useState(false);
-  const [showAllDone, setShowAllDone] = useState(false);
+  const [showAll, setShowAll] = useState<Record<GroupId, boolean>>({ todo: false, inProgress: false, completed: false });
 
-  const open = useMemo(
-    () => sortRows(filtered.filter((row) => row.status !== "completed"), sort, byDue),
+  // One group per status, in workflow order; open work by due date, done work newest first.
+  const groups = useMemo(
+    () =>
+      [
+        { id: "todo", name: "To do", rows: sortRows(filtered.filter((row) => row.status === "todo"), sort, byDue) },
+        { id: "inProgress", name: "In progress", rows: sortRows(filtered.filter((row) => row.status === "in-progress"), sort, byDue) },
+        { id: "completed", name: "Completed", rows: sortRows(filtered.filter((row) => row.status === "completed"), sort, byCompletedDesc) },
+      ] satisfies { id: GroupId; name: string; rows: typeof filtered }[],
     [filtered, sort],
   );
-  const done = useMemo(
-    () => sortRows(filtered.filter((row) => row.status === "completed"), sort, byCompletedDesc),
-    [filtered, sort],
-  );
-  const openShown = showAllOpen ? open : open.slice(0, OPEN_LIMIT);
-  const doneShown = showAllDone ? done : done.slice(0, COMPLETED_LIMIT);
 
   function toggleSort(columnId: string) {
     setSort((current) =>
@@ -273,24 +274,22 @@ export function WorkTracker({
                   })}
                 </tr>
               </thead>
-              {open.length > 0 ? (
-                <tbody>
-                  <GroupHeader name="Open" count={open.length} span={7} tone="open" />
-                  {openShown.map((row) => (
-                    <TaskLine key={row.id} row={row} />
-                  ))}
-                  <MoreRow total={open.length} limit={OPEN_LIMIT} expanded={showAllOpen} onToggle={() => setShowAllOpen((v) => !v)} />
-                </tbody>
-              ) : null}
-              {done.length > 0 ? (
-                <tbody>
-                  <GroupHeader name="Completed" count={done.length} span={7} tone="completed" />
-                  {doneShown.map((row) => (
-                    <TaskLine key={row.id} row={row} />
-                  ))}
-                  <MoreRow total={done.length} limit={COMPLETED_LIMIT} expanded={showAllDone} onToggle={() => setShowAllDone((v) => !v)} />
-                </tbody>
-              ) : null}
+              {groups.map((group) =>
+                group.rows.length > 0 ? (
+                  <tbody key={group.id}>
+                    <GroupHeader name={group.name} count={group.rows.length} span={7} tone={group.id} />
+                    {(showAll[group.id] ? group.rows : group.rows.slice(0, GROUP_LIMIT[group.id])).map((row) => (
+                      <TaskLine key={row.id} row={row} />
+                    ))}
+                    <MoreRow
+                      total={group.rows.length}
+                      limit={GROUP_LIMIT[group.id]}
+                      expanded={showAll[group.id]}
+                      onToggle={() => setShowAll((current) => ({ ...current, [group.id]: !current[group.id] }))}
+                    />
+                  </tbody>
+                ) : null,
+              )}
             </table>
           </div>
         )}

@@ -2,11 +2,11 @@ import type { Metadata } from "next";
 import { Info } from "lucide-react";
 import { PageBody, PageHeader } from "@/components/layout/page-header";
 import { OverviewView } from "@/features/overview/overview-view";
-import { getAvailableMonths, getToday, resolvePagePeriod } from "@/lib/data/calendar";
+import { getToday, resolvePagePeriod } from "@/lib/data/calendar";
 import { getWorkTrackerData, type WorkTrackerData } from "@/lib/data/work";
 import { describePeriod } from "@/lib/date-range";
 import { countTasks, taskInPeriod, taskProgress, yearRange } from "@/lib/domain/progress";
-import { toMonthKey } from "@/lib/month";
+import { periodBuckets } from "@/lib/period-buckets";
 
 
 export const metadata: Metadata = { title: "Overview" };
@@ -33,7 +33,7 @@ export default async function OverviewPage({
   const period = await resolvePagePeriod(await searchParams);
   const { range } = period;
   const today = await getToday();
-  const [work, activeMonths] = await Promise.all([loadWork(), getAvailableMonths()]);
+  const work = await loadWork();
   const { tasks, people } = work;
 
   const periodTasks = tasks.filter((task) => taskInPeriod(task, range));
@@ -45,10 +45,21 @@ export default async function OverviewPage({
   const planProgress = work.error ? null : taskProgress(tasks, range);
   const yearlyPlan = work.error ? null : taskProgress(tasks, yearRange(today));
 
-  const tasksByMonth = activeMonths.map((key) => {
-    const counts = countTasks(tasks.filter((task) => task.month === key));
-    return { month: key, completed: counts.completed, open: counts.todo + counts.inProgress };
-  });
+  // The whole period is drawn, since open tasks can be due later in it. A task
+  // sits in the column of its completion day, or its due day while open.
+  const { unit, buckets } = periodBuckets(range, today);
+  const tasksTrend = {
+    unit,
+    rows: buckets.map((bucket) => {
+      const counts = countTasks(periodTasks.filter((task) => taskInPeriod(task, bucket.range)));
+      return {
+        label: bucket.label,
+        completed: counts.completed,
+        open: counts.todo + counts.inProgress,
+        partial: bucket.partial,
+      };
+    }),
+  };
 
   const recentCompleted = periodTasks
     .filter((task) => task.status === "completed")
@@ -80,13 +91,12 @@ export default async function OverviewPage({
         key={`${range.from}_${range.to}`}
         range={range}
         periodText={describePeriod(period)}
-        months={activeMonths}
-        inProgressMonth={toMonthKey(today)}
+        today={today}
         taskCounts={periodCounts}
         planYear={year}
         yearlyPlan={yearlyPlan}
         planProgress={planProgress}
-        tasksByMonth={tasksByMonth}
+        tasksTrend={tasksTrend}
         recentCompleted={recentCompleted}
       />
     </PageBody>

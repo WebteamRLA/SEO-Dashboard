@@ -35,6 +35,7 @@ import {
   type SearchTotals,
   type TrafficTotals,
 } from "./reports";
+import { parseTrafficOverview, trafficOverviewRequests, type TrafficOverview } from "./traffic-overview";
 
 export class GoogleRequestError extends Error {
   constructor(message: string) {
@@ -55,8 +56,8 @@ const FAILURE_TTL_MS = 60_000;
 let token: AccessToken | null = null;
 let pendingToken: Promise<AccessToken> | null = null;
 
-/** One token exchange at a time: parallel reports on a cold start share it. */
-async function accessToken(): Promise<string> {
+/** One token exchange at a time: parallel reports on a cold start share it. Also used by Site health. */
+export async function accessToken(): Promise<string> {
   if (token && token.expiresAt - Date.now() > 60_000) return token.token;
   pendingToken ??= fetchAccessToken(getServiceAccount()).finally(() => {
     pendingToken = null;
@@ -190,6 +191,17 @@ export async function fetchBehavior(window: ReportWindow): Promise<BehaviorData>
     const [a, b] = behaviorRequests(window);
     const [batchA, batchB] = await Promise.all([post("Google Analytics", url, a), post("Google Analytics", url, b)]);
     return parseBehavior(batchA, batchB);
+  });
+}
+
+/** Visits, channels, daily visits and landing pages for the Traffic page: two GA4 batch calls in parallel. */
+export async function fetchTrafficOverview(window: ReportWindow): Promise<TrafficOverview> {
+  const property = getGa4PropertyId();
+  const url = ga4BatchUrl(property);
+  return cached(`ga4-traffic-overview|${property}|${window.current.from}|${window.current.to}`, async () => {
+    const [a, b] = trafficOverviewRequests(window);
+    const [batchA, batchB] = await Promise.all([post("Google Analytics", url, a), post("Google Analytics", url, b)]);
+    return parseTrafficOverview(batchA, batchB);
   });
 }
 

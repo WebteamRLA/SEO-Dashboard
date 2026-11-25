@@ -1,38 +1,23 @@
+import { isWithin, type DateRange } from "@/lib/date-range";
 import type { Lead, PipelineStage } from "@/lib/types";
 import { PIPELINE_STAGES } from "@/lib/types";
-
-export const DATE_PRESETS = [
-  { value: "7", label: "Last 7 days", days: 7 },
-  { value: "30", label: "Last 30 days", days: 30 },
-  { value: "90", label: "Last 90 days", days: 90 },
-] as const;
-
-const DAY_MS = 86_400_000;
 
 export interface InboxFilters {
   search: string;
   /** A lead source, or "all". */
   source: string;
-  /** "all" or one of DATE_PRESETS values. */
-  period: string;
+  /** Only leads added in this period (the topbar date range). Null for every lead. */
+  range: DateRange | null;
   /** A pipeline stage, or "all". */
   stage: string;
 }
 
 /**
- * Filters the inbox. "Last N days" covers the N days ending on, and including,
- * the reference date. `referenceDate` is passed in so the result never depends
- * on the real clock.
+ * Leads matching the inbox filters. A lead counts in the period by the day it
+ * was added, in the reporting time zone, exactly as the Overview counts it.
  */
-export function filterLeads(
-  leads: readonly Lead[],
-  filters: InboxFilters,
-  referenceDate: string,
-): Lead[] {
+export function filterLeads(leads: readonly Lead[], filters: InboxFilters): Lead[] {
   const query = filters.search.trim().toLowerCase();
-  const preset = DATE_PRESETS.find((item) => item.value === filters.period);
-  const since = preset ? Date.parse(referenceDate) - (preset.days - 1) * DAY_MS : null;
-
   return leads.filter((lead) => {
     if (query) {
       const haystack = `${lead.name} ${lead.email ?? ""} ${lead.company ?? ""}`.toLowerCase();
@@ -40,7 +25,7 @@ export function filterLeads(
     }
     if (filters.source !== "all" && lead.attribution.source !== filters.source) return false;
     if (filters.stage !== "all" && lead.stage !== filters.stage) return false;
-    if (since !== null && (lead.submittedAt === null || Date.parse(lead.submittedAt) < since)) return false;
+    if (filters.range && !isWithin(lead.submittedAt, filters.range)) return false;
     return true;
   });
 }

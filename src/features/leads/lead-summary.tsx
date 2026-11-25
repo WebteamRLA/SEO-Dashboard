@@ -4,6 +4,7 @@ import { useMemo } from "react";
 import { MetricCard, MetricGrid } from "@/components/data/metric-card";
 import { Legend, LegendItem, Panel } from "@/components/data/panel";
 import { RankedBars } from "@/components/charts/ranked-bars";
+import { isWithin, type DateRange } from "@/lib/date-range";
 import type { Lead, RevenueBySource } from "@/lib/types";
 import { useLeads } from "./leads-store";
 import { formatMoneyShort, plural } from "./lead-ui";
@@ -33,14 +34,19 @@ function summarise(leads: readonly Lead[]) {
 }
 
 /**
- * The top of the Leads pages: four KPI tiles and where leads came from. It
- * covers every card on the Teamwork Pipeline board, whatever the filters below
- * are set to, so List and Pipeline show the same figures. Teamwork has no deal
- * values, so the tiles count leads rather than money.
+ * The top of the Leads pages: four KPI tiles and where leads came from,
+ * whatever the filters below are set to. With `range` (List and Pipeline both
+ * pass the topbar period) it covers leads added in that period; without it,
+ * every card on the board. Teamwork has no deal values, so the tiles count
+ * leads rather than money.
  */
-export function LeadSummary() {
+export function LeadSummary({ range, periodText }: { range?: DateRange; periodText?: string } = {}) {
   const { leads } = useLeads();
-  const summary = useMemo(() => summarise(leads), [leads]);
+  const summary = useMemo(
+    () => summarise(range ? leads.filter((lead) => isWithin(lead.submittedAt, range)) : leads),
+    [leads, range],
+  );
+  const scope = range ? "Added in this period" : "On the Teamwork board";
 
   return (
     <>
@@ -49,7 +55,7 @@ export function LeadSummary() {
           tone="green"
           label="Leads"
           value={summary.total.toLocaleString("en-US")}
-          detail={`On the Teamwork board · ${summary.fromSearchAndAi} from search and AI`}
+          detail={`${scope} · ${summary.fromSearchAndAi} from search and AI`}
         />
         <MetricCard
           tone="blue"
@@ -68,7 +74,9 @@ export function LeadSummary() {
       <Panel
         id="leads-by-source"
         title="Where leads came from"
-        description="Every lead by the source tag on its Teamwork card"
+        description={
+          range ? `Leads added in this period by the source tag on their Teamwork card · ${periodText ?? ""}` : "Every lead by the source tag on its Teamwork card"
+        }
         actions={
           <Legend>
             <LegendItem color="var(--bar)" label="Search and AI" />
@@ -77,7 +85,7 @@ export function LeadSummary() {
         }
       >
         {summary.sources.length === 0 ? (
-          <p className="py-2 text-[13px] text-ink-quiet">No leads yet.</p>
+          <p className="py-2 text-[13px] text-ink-quiet">{range ? "No leads in this period." : "No leads yet."}</p>
         ) : (
           <RankedBars label="Leads by source" rows={summary.sources} labelWidth={130} />
         )}

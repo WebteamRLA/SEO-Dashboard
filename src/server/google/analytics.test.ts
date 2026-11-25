@@ -1,14 +1,12 @@
 import { describe, expect, it } from "vitest";
 import {
   ga4BreakdownRequest,
-  joinLandingPages,
   parseGa4Breakdown,
   parseKeywords,
   parsePages,
   parseSearchDays,
   searchConsoleBreakdown,
   searchTrend,
-  toPath,
   trafficTrend,
   trendUnit,
 } from "./analytics";
@@ -170,31 +168,5 @@ describe("trends", () => {
     );
     // The day with no data is a zero, not a gap the line jumps across.
     expect(points.map((p) => [p.start, p.sessions])).toEqual([["2026-11-01", 5], ["2026-11-02", 0], ["2026-11-03", 7]]);
-  });
-});
-
-describe("landing pages", () => {
-  it("reduces URLs to paths", () => {
-    expect(toPath("https://rightleftagency.com/blog/x/?utm=1")).toBe("/blog/x/");
-    expect(toPath("/blog/x/?a=b")).toBe("/blog/x/");
-    expect(toPath("https://rightleftagency.com")).toBe("/");
-  });
-
-  it("joins Search Console pages with GA4 organic sessions on the path", () => {
-    const rows = joinLandingPages(
-      [
-        { url: "https://x.com/a/", clicks: 5, impressions: 100, ctr: 5, position: 3 },
-        { url: "https://x.com/b/", clicks: 9, impressions: 90, ctr: 10, position: 2 },
-      ],
-      [
-        { path: "/a", sessions: 12, users: 10 },
-        { path: "/only-ga4/", sessions: 4, users: 4 },
-      ],
-    );
-    expect(rows).toEqual([
-      { path: "/b/", url: "https://x.com/b/", clicks: 9, impressions: 90, organicSessions: null },
-      { path: "/a/", url: "https://x.com/a/", clicks: 5, impressions: 100, organicSessions: 12 },
-      { path: "/only-ga4/", url: null, clicks: null, impressions: null, organicSessions: 4 },
-    ]);
   });
 });

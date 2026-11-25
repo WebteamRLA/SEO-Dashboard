@@ -1,6 +1,6 @@
 "use client";
 
-import { PeriodLink, usePeriodHref } from "@/components/layout/period-link";
+import { PeriodLink } from "@/components/layout/period-link";
 import { useMemo, useState } from "react";
 import { ChevronRight } from "lucide-react";
 import { DataTable, type Column } from "@/components/data/data-table";
@@ -12,7 +12,9 @@ import { PageBody, PageHeader } from "@/components/layout/page-header";
 import { STAGE_META } from "@/lib/domain/leads";
 import { formatDate } from "@/lib/format";
 import { LEAD_SOURCES, PIPELINE_STAGES, type Lead, type PipelineColumn } from "@/lib/types";
-import { DATE_PRESETS, filterLeads } from "./lead-logic";
+import type { DateRange } from "@/lib/date-range";
+import { LeadDrawer, openLead, openLeadOnClick } from "./lead-drawer";
+import { filterLeads } from "./lead-logic";
 import { LeadSummary } from "./lead-summary";
 import {
   ACTIVE_FILTER_CLASS,
@@ -28,7 +30,6 @@ import { SpamTag } from "./spam-tag";
 import { SyncButton } from "./sync-button";
 
 const SOURCE_OPTIONS = LEAD_SOURCES.map((source) => ({ value: source, label: source }));
-const DATE_OPTIONS = DATE_PRESETS.map((preset) => ({ value: preset.value, label: preset.label }));
 
 const COLUMNS: Column<Lead>[] = [
   {
@@ -39,7 +40,7 @@ const COLUMNS: Column<Lead>[] = [
       <div className="flex max-w-[280px] min-w-[140px] flex-col items-start sm:min-w-[200px] leading-[1.35]">
         <PeriodLink
           href={`/leads/${lead.id}`}
-          onClick={(event) => event.stopPropagation()}
+          onClick={openLeadOnClick(lead.id)}
           className="max-w-full truncate rounded-sm text-sm font-medium text-ink outline-none hover:text-primary focus-visible:ring-2 focus-visible:ring-ring"
         >
           {lead.name}
@@ -116,12 +117,11 @@ const COLUMNS: Column<Lead>[] = [
   },
 ];
 
-export function LeadInbox({ referenceDate }: { referenceDate: string }) {
+/** The list follows the topbar date range: only leads added in `range` are shown. */
+export function LeadInbox({ range, periodText }: { range: DateRange; periodText: string }) {
   const { leads, columns, error } = useLeads();
-  const withPeriod = usePeriodHref();
   const [search, setSearch] = useState("");
   const [source, setSource] = useState(ALL);
-  const [period, setPeriod] = useState(ALL);
   const [stage, setStage] = useState(ALL);
   const [showSpam, setShowSpam] = useState(false);
 
@@ -132,10 +132,10 @@ export function LeadInbox({ referenceDate }: { referenceDate: string }) {
   );
   const matching = useMemo(
     () =>
-      filterLeads(leads, { search, source, period, stage: ALL }, referenceDate).filter(
+      filterLeads(leads, { search, source, range, stage: ALL }).filter(
         (lead) => stage === ALL || String(lead.teamwork?.column.id ?? "") === stage,
       ),
-    [leads, search, source, period, stage, referenceDate],
+    [leads, search, source, range, stage],
   );
 
   // Spam stays out of the list unless asked for, or picked as the stage filter.
@@ -146,22 +146,21 @@ export function LeadInbox({ referenceDate }: { referenceDate: string }) {
     [matching, spamToggle, showSpam],
   );
 
-  const filtered = search.trim() !== "" || source !== ALL || period !== ALL || stage !== ALL;
+  const filtered = search.trim() !== "" || source !== ALL || stage !== ALL;
   function clearFilters() {
     setSearch("");
     setSource(ALL);
-    setPeriod(ALL);
     setStage(ALL);
   }
 
   return (
     <PageBody>
       <PageHeader title="Lead Inbox" />
-      <LeadSummary />
+      <LeadSummary range={range} periodText={periodText} />
       <Panel
         id="all-leads"
         title="All leads"
-        description="Every card on the Teamwork Pipeline board, newest first. Leads change in Teamwork; Sync pulls the latest."
+        description={`Cards added to the Teamwork Pipeline board in this period (${periodText}), newest first. Leads change in Teamwork; Sync pulls the latest.`}
         actions={
           <>
             <SyncButton />
@@ -179,14 +178,6 @@ export function LeadInbox({ referenceDate }: { referenceDate: string }) {
               options={SOURCE_OPTIONS}
               onChange={setSource}
               className={source !== ALL ? ACTIVE_FILTER_CLASS : undefined}
-            />
-            <FilterSelect
-              label="Filter by date"
-              allLabel="All time"
-              value={period}
-              options={DATE_OPTIONS}
-              onChange={setPeriod}
-              className={period !== ALL ? ACTIVE_FILTER_CLASS : undefined}
             />
             <FilterSelect
               label="Filter by pipeline stage"
@@ -214,14 +205,15 @@ export function LeadInbox({ referenceDate }: { referenceDate: string }) {
           columns={COLUMNS}
           rows={rows}
           getRowId={(lead) => lead.id}
-          rowHref={(lead) => withPeriod(`/leads/${lead.id}`)}
+          onRowClick={(lead) => openLead(lead.id)}
           defaultSort={{ columnId: "submitted", direction: "desc" }}
-          emptyTitle="No leads match"
-          emptyDescription="Try a different search, or clear a filter."
+          emptyTitle={filtered ? "No leads match" : "No leads in this period"}
+          emptyDescription={filtered ? "Try a different search, or clear a filter." : "Pick a longer period in the date range at the top."}
           bare
           footerSummary
         />
       </Panel>
+      <LeadDrawer />
     </PageBody>
   );
 }

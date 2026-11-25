@@ -12,26 +12,25 @@ import { ExternalLink } from "@/components/data/external-link";
 import { useLeads } from "@/features/leads/leads-store";
 import { computeLeadMetrics, countLeadsBySource, STAGE_META } from "@/lib/domain/leads";
 import type { GoogleOverview } from "@/lib/data/google";
-import { isWithin, monthsInRange, type DateRange } from "@/lib/date-range";
-import { toMonthKey } from "@/lib/month";
-import { formatDate, formatMonthShort, formatNumber } from "@/lib/format";
-import type { LeadSource, MonthKey, Progress, TaskCounts } from "@/lib/types";
-import { completeMonths } from "@/lib/month";
+import { isWithin, type DateRange } from "@/lib/date-range";
+import { formatDate, formatNumber } from "@/lib/format";
+import { periodBuckets, type BucketUnit } from "@/lib/period-buckets";
+import type { ISODate, LeadSource, Progress, TaskCounts } from "@/lib/types";
 import { GooglePanels } from "./google-panels";
-import { buildMonthSummary } from "./summary";
 
 export interface OverviewProps {
-  inProgressMonth: MonthKey;
   range: DateRange;
   periodText: string;
-  months: MonthKey[];
+  /** Today in the reporting time zone; the leads chart stops here. */
+  today: ISODate;
   taskCounts: TaskCounts;
   /** Calendar year the yearly figure covers, such as "2026". */
   planYear: string;
   /** Share of SEO tasks in Teamwork completed. Null when Teamwork is unavailable. */
   yearlyPlan: Progress | null;
   planProgress: Progress | null;
-  tasksByMonth: { month: MonthKey; completed: number; open: number }[];
+  /** Tasks over the selected period, one row per chart column. */
+  tasksTrend: { unit: BucketUnit; rows: { label: string; completed: number; open: number; partial: boolean }[] };
   recentCompleted: {
     id: string;
     name: string;
@@ -46,6 +45,9 @@ export interface OverviewProps {
    */
   google?: GoogleOverview | null;
 }
+
+/** "By day", "By week" or "By month", for chart descriptions. */
+const BY_UNIT: Record<BucketUnit, string> = { day: "By day", week: "By week", month: "By month" };
 
 const TEAMWORK_DOWN = "Teamwork is not available right now";
 
@@ -94,14 +96,13 @@ function CheckCircle() {
 
 export function OverviewView({
   range,
-  inProgressMonth,
   periodText,
-  months,
+  today,
   taskCounts,
   planYear,
   yearlyPlan,
   planProgress,
-  tasksByMonth,
+  tasksTrend,
   recentCompleted,
   google,
 }: OverviewProps) {
@@ -116,29 +117,16 @@ export function OverviewView({
       .filter((lead) => lead.stage !== "spam")
       .sort((a, b) => (b.submittedAt ?? "").localeCompare(a.submittedAt ?? ""))
       .slice(0, 5);
-    const byMonth = months.map((key) => ({
-      month: key,
-      leads: computeLeadMetrics(
-        leads.filter((lead) => lead.submittedAt !== null && toMonthKey(lead.submittedAt) === key),
-      ).genuine,
+    // Leads cannot arrive in the future, so the chart stops at today.
+    const { unit, buckets } = periodBuckets(range, today, { stopAtToday: true });
+    const trend = buckets.map((bucket) => ({
+      label: bucket.label,
+      partial: bucket.partial,
+      leads: computeLeadMetrics(inPeriod.filter((lead) => isWithin(lead.submittedAt, bucket.range))).genuine,
     }));
-    return { metrics, sources, open, recent, byMonth };
-  }, [leads, range, months]);
+    return { metrics, sources, open, recent, trend, trendUnit: unit };
+  }, [leads, range, today]);
 
-  const periodMonths = useMemo(() => new Set(monthsInRange(range)), [range]);
-  const monthLabel = (key: MonthKey) =>
-    periodMonths.has(key) ? `${formatMonthShort(key)} (in period)` : formatMonthShort(key);
-
-  const summary = buildMonthSummary({
-    periodText,
-    tasks: taskCounts,
-    // Plan progress is the task completion rate, which the tasks line already states.
-    planProgress: null,
-    leads: stats.metrics,
-    sources: stats.sources,
-  });
-
-  const leadsByMonth = completeMonths(stats.byMonth, inProgressMonth);
   const searchLeads = stats.sources
     .filter((row) => SEARCH_SOURCES.has(row.source))
     .reduce((sum, row) => sum + row.count, 0);
@@ -184,13 +172,17 @@ export function OverviewView({
         >
           <div className="flex flex-col gap-8">
             <PanelColumns>
-              <PanelBlock headingLevel={4} title="Leads over time" description="By month · complete months only">
-                {leadsByMonth.every((row) => row.leads === 0) ? (
-                  <QuietEmpty>No complete months with leads yet.</QuietEmpty>
+              <PanelBlock
+                headingLevel={4}
+                title="Leads over time"
+                description={`${BY_UNIT[stats.trendUnit]} · genuine leads in this period`}
+              >
+                {stats.trend.every((row) => row.leads === 0) ? (
+                  <QuietEmpty>No leads in this period.</QuietEmpty>
                 ) : (
                   <ColumnChart
-                    label="Genuine leads by month"
-                    data={leadsByMonth.map((row) => ({ label: formatMonthShort(row.month), value: row.leads }))}
+                    label={`Genuine leads ${BY_UNIT[stats.trendUnit].toLowerCase()}`}
+                    data={stats.trend.map((row) => ({ label: row.label, value: row.leads, partial: row.partial }))}
                   />
                 )}
               </PanelBlock>
@@ -287,18 +279,13 @@ export function OverviewView({
           title="Tasks"
           description="Tasks from the SEO plan in Teamwork"
           headingLevel={3}
-          actions={
-            <>
-              <DetailsLink href="/roadmap">View roadmap</DetailsLink>
-              <DetailsLink href="/work" about="tasks" />
-            </>
-          }
+          actions={<DetailsLink href="/work" about="tasks" />}
         >
           <PanelColumns>
             <PanelBlock
               headingLevel={4}
               title="Tasks over time"
-              description="By month · completed and open (to do plus in progress)"
+              description={`${BY_UNIT[tasksTrend.unit]} · completed and open (to do plus in progress)`}
               aside={
                 <Legend>
                   <LegendItem color={BAR_BLUE} label="Completed" />
@@ -306,31 +293,32 @@ export function OverviewView({
                 </Legend>
               }
             >
-              {tasksByMonth.every((row) => row.completed + row.open === 0) ? (
-                <QuietEmpty>No tasks yet.</QuietEmpty>
+              {tasksTrend.rows.every((row) => row.completed + row.open === 0) ? (
+                <QuietEmpty>No tasks in this period.</QuietEmpty>
               ) : (
                 <>
                   <ColumnChart
-                    label="Tasks by month, completed plus open"
-                    data={tasksByMonth.map((row) => ({
-                      label: formatMonthShort(row.month),
+                    label={`Tasks ${BY_UNIT[tasksTrend.unit].toLowerCase()}, completed plus open`}
+                    data={tasksTrend.rows.map((row) => ({
+                      label: row.label,
                       value: row.completed,
                       extra: row.open,
+                      partial: row.partial,
                     }))}
                   />
                   <table className="sr-only">
-                    <caption>Tasks by month</caption>
+                    <caption>Tasks {BY_UNIT[tasksTrend.unit].toLowerCase()}</caption>
                     <thead>
                       <tr>
-                        <th scope="col">Month</th>
+                        <th scope="col">Period</th>
                         <th scope="col">Completed</th>
                         <th scope="col">Open</th>
                       </tr>
                     </thead>
                     <tbody>
-                      {tasksByMonth.map((row) => (
-                        <tr key={row.month}>
-                          <th scope="row">{monthLabel(row.month)}</th>
+                      {tasksTrend.rows.map((row) => (
+                        <tr key={row.label}>
+                          <th scope="row">{row.label}</th>
                           <td>{formatNumber(row.completed)}</td>
                           <td>{formatNumber(row.open)}</td>
                         </tr>
@@ -368,16 +356,6 @@ export function OverviewView({
               )}
             </PanelBlock>
           </PanelColumns>
-        </Panel>
-      </PageSection>
-
-      <PageSection label="Summary">
-        <Panel title="Performance summary" description={periodText} headingLevel={3}>
-          <ul className="flex list-disc flex-col gap-1.5 pl-4 text-[13px] text-ink-body marker:text-bar-muted">
-            {summary.map((line) => (
-              <li key={line}>{line}</li>
-            ))}
-          </ul>
         </Panel>
       </PageSection>
     </div>

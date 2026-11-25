@@ -1,5 +1,17 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "buildCommand": "node scripts/prisma-generate-node.mjs && next build",
-  "regions": ["sin1"]
+  "regions": [
+    "sin1"
+  ],
+  "crons": [
+    {
+      "path": "/api/cron/site-health?task=daily",
+      "schedule": "0 7 * * *"
+    },
+    {
+      "path": "/api/cron/site-health?task=weekly",
+      "schedule": "0 8 * * 1"
+    }
+  ]
 }

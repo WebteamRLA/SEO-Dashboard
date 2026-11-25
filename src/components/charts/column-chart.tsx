@@ -50,7 +50,7 @@ export function ColumnChart({
       <div
         role="img"
         aria-label={summary}
-        className="flex items-end gap-2 border-b border-line tabular-nums"
+        className={cn("flex items-end border-b border-line tabular-nums", dense ? "gap-0.5" : "gap-2")}
         style={{ height }}
       >
         {data.map((datum, index) => {
@@ -76,7 +76,7 @@ export function ColumnChart({
           );
         })}
       </div>
-      <div aria-hidden className="mt-1.5 flex gap-2">
+      <div aria-hidden className={cn("mt-1.5 flex", dense ? "gap-0.5" : "gap-2")}>
         {data.map((datum, index) => (
           <span
             key={index}

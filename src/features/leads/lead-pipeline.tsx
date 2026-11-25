@@ -9,6 +9,8 @@ import { SearchInput } from "@/components/data/search-input";
 import { PageBody, PageHeader } from "@/components/layout/page-header";
 import { formatDate } from "@/lib/format";
 import { LEAD_SOURCES, type Lead, type PipelineColumn } from "@/lib/types";
+import { LeadDrawer, openLeadOnClick } from "./lead-drawer";
+import type { DateRange } from "@/lib/date-range";
 import { filterLeads } from "./lead-logic";
 import { LeadSummary } from "./lead-summary";
 import { ACTIVE_FILTER_CLASS, ClearFiltersButton, LeadViewSwitch, plural, SourceIcon } from "./lead-ui";
@@ -20,18 +22,18 @@ const SOURCE_OPTIONS = LEAD_SOURCES.map((source) => ({ value: source, label: sou
 
 /**
  * The Teamwork Pipeline board, read-only: Teamwork's own columns in Teamwork's
- * order and colours. Cards move in Teamwork; Sync pulls the latest board.
+ * order and colours. Cards move in Teamwork; Sync pulls the latest board. Like
+ * the list, it follows the topbar date range: only cards added in `range` show.
  */
-export function LeadPipeline() {
+export function LeadPipeline({ range, periodText }: { range: DateRange; periodText: string }) {
   const { leads, columns, error } = useLeads();
   const [search, setSearch] = useState("");
   const [source, setSource] = useState(ALL);
 
-  // Search and source narrow what the board shows. The board has no date
-  // filter, so no reference date is needed.
+  // The period, search and source narrow what the board shows.
   const visible = useMemo(
-    () => filterLeads(leads, { search, source, period: ALL, stage: ALL }, ""),
-    [leads, search, source],
+    () => filterLeads(leads, { search, source, range, stage: ALL }),
+    [leads, search, source, range],
   );
   const byColumn = useMemo(() => {
     const groups = new Map<number, Lead[]>(columns.map((column) => [column.id, []]));
@@ -46,11 +48,11 @@ export function LeadPipeline() {
   return (
     <PageBody>
       <PageHeader title="Lead Pipeline" />
-      <LeadSummary />
+      <LeadSummary range={range} periodText={periodText} />
       <Panel
         id="all-leads"
         title="All leads"
-        description="The Pipeline board from Teamwork. Cards move in Teamwork; Sync pulls the latest."
+        description={`Cards added to the Teamwork Pipeline board in this period (${periodText}). Cards move in Teamwork; Sync pulls the latest.`}
         actions={
           <>
             <SyncButton />
@@ -88,7 +90,8 @@ export function LeadPipeline() {
             role="region"
             aria-label="Pipeline, scroll sideways for more columns"
             tabIndex={0}
-            className="scroll-thin relative overflow-x-auto rounded-b-xl px-5 pt-4 pb-5 outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset"
+            // Sideways only: columns scroll on their own, so the board itself never scrolls up and leaves a gap.
+            className="scroll-thin relative overflow-x-auto overflow-y-hidden rounded-b-xl px-5 pt-4 pb-5 outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset"
           >
             <div className="flex w-max items-start gap-4">
               {columns.map((column) => (
@@ -98,6 +101,7 @@ export function LeadPipeline() {
           </div>
         )}
       </Panel>
+      <LeadDrawer />
     </PageBody>
   );
 }
@@ -119,7 +123,8 @@ function BoardColumn({ column, leads }: { column: PipelineColumn; leads: Lead[] 
           <span className="sr-only"> {leads.length === 1 ? "lead" : "leads"}</span>
         </span>
       </header>
-      <ul className="scroll-thin -mx-1 flex min-h-0 flex-1 flex-col gap-2 overflow-y-auto px-1 pb-0.5">
+      {/* `relative` keeps the cards' screen-reader text inside this scrolling list; without it that text stretches the whole board. */}
+      <ul className="scroll-thin relative -mx-1 flex min-h-0 flex-1 flex-col gap-2 overflow-y-auto px-1 pb-0.5">
         {leads.length === 0 ? (
           <li className="px-1 py-3.5 text-center text-xs text-ink-quiet">No leads in this column</li>
         ) : (
@@ -137,12 +142,14 @@ function BoardColumn({ column, leads }: { column: PipelineColumn; leads: Lead[] 
 function LeadCard({ lead }: { lead: Lead }) {
   const info = lead.teamwork;
   return (
-    <article className="flex flex-col gap-1.5 rounded-[10px] border border-input bg-card px-3 py-2.5">
+    // The name link stretches over the whole card, so a click anywhere opens the lead; the Teamwork link sits above it.
+    <article className="group relative flex flex-col gap-1.5 rounded-[10px] border border-input bg-card px-3 py-2.5 transition-colors hover:border-[#C9CED6] hover:bg-[#FCFCFD]">
       <div className="flex items-start gap-1.5">
         <div className="flex min-w-0 flex-1 flex-col leading-[1.35]">
           <PeriodLink
             href={`/leads/${lead.id}`}
-            className="w-fit max-w-full truncate rounded-sm text-[13px] font-semibold text-ink outline-none hover:text-primary focus-visible:ring-2 focus-visible:ring-ring"
+            onClick={openLeadOnClick(lead.id)}
+            className="w-fit max-w-full truncate text-[13px] font-semibold text-ink outline-none group-hover:text-primary after:absolute after:inset-0 after:rounded-[10px] focus-visible:after:ring-2 focus-visible:after:ring-ring"
           >
             {lead.name}
           </PeriodLink>
@@ -154,7 +161,7 @@ function LeadCard({ lead }: { lead: Lead }) {
             target="_blank"
             rel="noopener noreferrer"
             aria-label={`Open ${lead.name} in Teamwork (new tab)`}
-            className="-mt-0.5 -mr-1 flex size-6 shrink-0 items-center justify-center rounded-md text-[#9CA3AF] outline-none hover:bg-muted hover:text-ink focus-visible:ring-2 focus-visible:ring-ring"
+            className="relative z-10 -mt-0.5 -mr-1 flex size-6 shrink-0 items-center justify-center rounded-md text-[#9CA3AF] outline-none hover:bg-muted hover:text-ink focus-visible:ring-2 focus-visible:ring-ring"
           >
             <ExternalLink className="size-3.5" aria-hidden />
           </a>

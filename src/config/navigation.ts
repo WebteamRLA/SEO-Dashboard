@@ -68,13 +68,8 @@ export const NAVIGATION: NavGroup[] = [
     label: "Traffic",
     icon: ChartNoAxesColumn,
     section: "results",
-    tabs: true,
-    items: [
-      { label: "SEO Overview", tabLabel: "Overview", href: "/traffic-seo", periodScoped: true },
-      { label: "Visitors & Traffic", tabLabel: "Visitors", href: "/traffic-seo/visitors", periodScoped: true },
-      { label: "Behavior Analytics", tabLabel: "Behavior", href: "/traffic-seo/behavior", periodScoped: true },
-      { label: "Social Analytics", tabLabel: "Social", href: "/traffic-seo/social", periodScoped: true },
-    ],
+    // One page, as in the design: no Visitors / Behavior / Social tabs.
+    items: [{ label: "Traffic", href: "/traffic-seo", periodScoped: true }],
   },
   {
     id: "leads",
@@ -83,8 +78,8 @@ export const NAVIGATION: NavGroup[] = [
     section: "results",
     // List and Pipeline switch with a toggle inside the page, as in the design.
     items: [
-      { label: "Lead Inbox", tabLabel: "List", href: "/leads" },
-      { label: "Lead Pipeline", tabLabel: "Pipeline", href: "/leads/pipeline" },
+      { label: "Lead Inbox", tabLabel: "List", href: "/leads", periodScoped: true },
+      { label: "Lead Pipeline", tabLabel: "Pipeline", href: "/leads/pipeline", periodScoped: true },
     ],
   },
   {
@@ -100,13 +95,8 @@ export const NAVIGATION: NavGroup[] = [
     label: "Site health",
     icon: Activity,
     section: "results",
-    phase: "P2",
-    tabs: true,
-    items: [
-      { label: "Form Health", tabLabel: "Forms", href: "/site-health/forms", phase: "P2" },
-      { label: "Broken Links", tabLabel: "Broken links", href: "/site-health/broken-links", phase: "P2" },
-      { label: "Issue Log", tabLabel: "Issue log", href: "/site-health/issues", phase: "P2" },
-    ],
+    // One page, as in the design: speed, indexing and the weekly site check.
+    items: [{ label: "Site health", href: "/site-health" }],
   },
   {
     id: "work",

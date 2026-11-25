@@ -1,14 +1,13 @@
 import type { Metadata } from "next";
 import { PageBody, PageHeader } from "@/components/layout/page-header";
-import { SeoOverviewView } from "@/features/traffic/seo-overview-view";
+import { TrafficOverviewView } from "@/features/traffic/traffic-overview-view";
 import { getToday, resolvePagePeriod } from "@/lib/data/calendar";
-import { getSearchAnalytics, getTrafficAnalytics } from "@/lib/data/google";
+import { getTrafficOverview } from "@/lib/data/google";
 import { describePeriod } from "@/lib/date-range";
-import { joinLandingPages, searchTrend, trendUnit } from "@/server/google/analytics";
 
-export const metadata: Metadata = { title: "SEO Overview" };
+export const metadata: Metadata = { title: "Traffic" };
 
-export default async function SeoOverviewPage({
+export default async function TrafficPage({
   searchParams,
 }: {
   searchParams: Promise<{
@@ -19,23 +18,12 @@ export default async function SeoOverviewPage({
   }>;
 }) {
   const [period, today] = await Promise.all([searchParams.then(resolvePagePeriod), getToday()]);
-  const [{ window, search }, { traffic }] = await Promise.all([
-    getSearchAnalytics(period.range, today),
-    getTrafficAnalytics(period.range, today),
-  ]);
-  const trend = search.status === "ok" && window ? searchTrend(search.data.daily, window.current, trendUnit(window.days)) : [];
-  const landingPages = joinLandingPages(
-    search.status === "ok" ? search.data.pages : [],
-    traffic.status === "ok" ? traffic.data.breakdown.landingPages : [],
-  );
+  const { window, overview } = await getTrafficOverview(period.range, today);
 
   return (
     <PageBody>
-      <PageHeader
-        title="SEO Overview"
-        description={`Search and traffic headlines · Live from Search Console and GA4 · ${describePeriod(period)}`}
-      />
-      <SeoOverviewView window={window} search={search} traffic={traffic} trend={trend} landingPages={landingPages} />
+      <PageHeader title="Traffic" description={`Website visits · Live from GA4 · ${describePeriod(period)}`} />
+      <TrafficOverviewView range={period.range} window={window} overview={overview} />
     </PageBody>
   );
 }

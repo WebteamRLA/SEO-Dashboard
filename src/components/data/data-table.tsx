@@ -64,6 +64,7 @@ export function DataTable<T>({
   rows,
   getRowId,
   rowHref,
+  onRowClick,
   defaultSort,
   pageSize = 10,
   emptyTitle = "No results",
@@ -77,6 +78,8 @@ export function DataTable<T>({
   rows: T[];
   getRowId: (row: T) => string;
   rowHref?: (row: T) => string | undefined;
+  /** Instead of `rowHref`: what a click on the row does, such as opening a side panel. */
+  onRowClick?: (row: T) => void;
   defaultSort?: SortState;
   pageSize?: number;
   emptyTitle?: string;
@@ -174,19 +177,21 @@ export function DataTable<T>({
               <TableBody>
                 {pageRows.map((row) => {
                   const href = rowHref?.(row);
+                  const clickable = Boolean(href) || Boolean(onRowClick);
                   return (
                     <TableRow
                       key={getRowId(row)}
                       onClick={
-                        href
+                        clickable
                           ? (event) => {
-                              // A link inside the row handles its own click.
-                              if ((event.target as HTMLElement).closest("a")) return;
-                              openRowHref(href, router.push);
+                              // A link or button inside the row handles its own click.
+                              if ((event.target as HTMLElement).closest("a, button")) return;
+                              if (onRowClick) onRowClick(row);
+                              else if (href) openRowHref(href, router.push);
                             }
                           : undefined
                       }
-                      className={href ? "cursor-pointer" : undefined}
+                      className={clickable ? "cursor-pointer" : undefined}
                     >
                       {columns.map((column) => (
                         <TableCell
